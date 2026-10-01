@@ -7,9 +7,12 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+.npm-cache/
 
-# Testing
+# Testing & Test outputs
 /coverage/
+/playwright-report/
+/test-results/
 
 # Next.js
 /.next/
