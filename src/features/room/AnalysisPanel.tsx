@@ -25,6 +25,7 @@ export function AnalysisPanel({
 
   const { status, result, error, isAnalyzing, start, retry } = analysis;
 
+  // Validate context identity and render-readiness
   const isContextValid = Boolean(
     projectContext &&
     projectContext.projectId === projectId &&
@@ -152,6 +153,24 @@ export function AnalysisPanel({
           onRetry={retry}
           onContinue={onContinue}
         />
+  // Recovery UI when context is missing, corrupt, or mismatched
+  if (!isContextValid) {
+    return (
+      <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6 text-yellow-900 shadow-sm">
+        <h2 className="text-xl font-semibold text-gray-900">
+          No active room image found
+        </h2>
+        <p className="mt-2 text-sm text-gray-700">
+          We could not find an active image for this project, or the session context has expired.
+        </p>
+        <div className="mt-4">
+          <Link
+            href="/new-room"
+            className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          >
+            Upload a room image to start over
+          </Link>
+        </div>
       </div>
     );
   }
@@ -293,6 +312,25 @@ export function AnalysisPanel({
             </div>
 
             {/* Actions: Start / Retry */}
+
+                {status === "succeeded" && (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800"
+                  >
+                    <p className="font-semibold">Analysis complete! Results ready.</p>
+                    <p className="mt-1 text-xs text-green-700">
+                      {result?.detections.length === 0
+                        ? "0 objects detected in this room."
+                        : `${result?.detections.length} objects detected.`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions: Start / Retry / Proceed */}
             <div className="mt-6 flex flex-col gap-3">
               {(status === "ready" || status === "analyzing") && (
                 <button
@@ -315,6 +353,12 @@ export function AnalysisPanel({
                 >
                   Retry analysis
                 </button>
+              )}
+
+              {status === "succeeded" && (
+                <div className="text-xs text-gray-500 text-center">
+                  Ready for furniture detection inspection.
+                </div>
               )}
             </div>
           </div>
