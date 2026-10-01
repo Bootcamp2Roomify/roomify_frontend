@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { isRenderReadyImage, ProjectContext } from "../../types/room";
 import { useRoomAnalysis, UseRoomAnalysisReturn } from "./useRoomAnalysis";
+import { DetectionReview } from "./DetectionReview";
 import { useImageLoadState } from "./useImageLoadState";
 
 export interface AnalysisPanelProps {
@@ -9,12 +10,15 @@ export interface AnalysisPanelProps {
   projectContext: ProjectContext | null;
   /** Optional pre-bound analysis hook instance, primarily for testing or composition */
   analysis?: UseRoomAnalysisReturn;
+  /** Optional continuation callback for downstream furniture selection */
+  onContinue?: () => void;
 }
 
 export function AnalysisPanel({
   projectId,
   projectContext,
   analysis: injectedAnalysis,
+  onContinue,
 }: AnalysisPanelProps) {
   const internalAnalysis = useRoomAnalysis(projectId);
   const analysis = injectedAnalysis || internalAnalysis;
@@ -51,6 +55,104 @@ export function AnalysisPanel({
     expectedHeight: imageHeight,
   });
 
+  // Recovery UI helper for missing, corrupt, or wrong-project context
+  const renderRecovery = () => (
+    <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6 text-yellow-900 shadow-sm">
+      <h2 className="text-xl font-semibold text-gray-900">
+        No active room image found
+      </h2>
+      <p className="mt-2 text-sm text-gray-700">
+        We could not find an active image for this project, or the session context has expired.
+      </p>
+      <div className="mt-4">
+        <Link
+          href="/new-room"
+          className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        >
+          Upload a room image to start over
+        </Link>
+      </div>
+    </div>
+  );
+
+  // Validate context identity and render-readiness (positive dimensions & usable image/preview URL)
+  if (!context) {
+    return renderRecovery();
+  }
+
+  // Success view: mount DetectionReview with matching project/image identity
+  if (status === "succeeded" && result) {
+    // Result identity mismatch: wrong project rejection
+    if (result.projectId !== projectId) {
+      return renderRecovery();
+    }
+
+    // Result belongs to a previous room image in the same project
+    if (result.imageId !== context.image.imageId) {
+      return (
+        <div
+          role="alert"
+          className="rounded-lg border border-yellow-200 bg-yellow-50 p-6 text-yellow-900 shadow-sm"
+        >
+          <h2 className="text-xl font-semibold text-gray-900">
+            Results belong to a previous room image
+          </h2>
+          <p className="mt-2 text-sm text-gray-700">
+            The current analysis results were generated for an older image in this project. Please analyze the current room image.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={retry}
+              className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            >
+              Analyze current image
+            </button>
+            <Link
+              href="/new-room"
+              className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            >
+              Upload a new room image
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            Room Analysis
+          </h1>
+          <p className="text-sm text-gray-500">
+            Project ID: <span className="font-mono text-xs">{projectId}</span>
+          </p>
+        </div>
+
+        {/* Status announcements for screen readers and visual confirmation */}
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800"
+        >
+          <p className="font-semibold">Analysis complete! Results ready.</p>
+          <p className="mt-1 text-xs text-green-700">
+            {result.detections.length === 0
+              ? "0 objects detected in this room."
+              : `${result.detections.length} objects detected.`}
+          </p>
+        </div>
+
+        {/* Mounted DetectionReview: interactive overlay and list, retry-only callback, truthful unavailable continuation */}
+        <DetectionReview
+          imageUrl={imageUrl}
+          imageWidth={context.image.width!}
+          imageHeight={context.image.height!}
+          detections={result.detections}
+          onRetry={retry}
+          onContinue={onContinue}
+        />
   // Recovery UI when context is missing, corrupt, or mismatched
   if (!isContextValid) {
     return (
@@ -73,6 +175,7 @@ export function AnalysisPanel({
     );
   }
 
+  // Default view for ready / analyzing / failed states: preserves original image and shows status & actions
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -205,6 +308,10 @@ export function AnalysisPanel({
                     <p className="mt-1">{error || "We could not analyze this image. Try again."}</p>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Actions: Start / Retry */}
 
                 {status === "succeeded" && (
                   <div
