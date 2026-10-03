@@ -166,16 +166,21 @@ cp .env.example .env.local
 The frontend environment example contains:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8080
+ROOMIFY_API_URL=http://localhost:8080
 ```
 
-Only values intentionally exposed to the browser should use the `NEXT_PUBLIC_` prefix.
+The Next.js server forwards same-origin `/api/projects/...` requests to this backend URL. The legacy `NEXT_PUBLIC_API_URL` setting is also supported as a server destination.
 
 Do not place database passwords, JWT secrets, OpenAI or Gemini API keys, AWS access keys, or other private credentials in the frontend environment.
 
 ### Install and Run
 
-The installation, development, build, and test commands will be added after the Next.js project and package manager are initialized.
+```bash
+npm install
+npm run dev
+```
+
+Use `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` to verify changes. The current anonymous upload/analysis/review flow and service limitations are documented in [backend-integration.md](docs/backend-integration.md).
 
 The planned local frontend URL is:
 

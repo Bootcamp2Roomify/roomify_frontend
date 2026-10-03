@@ -59,8 +59,9 @@ function safeRevokeUrl(url?: string | null): void {
   }
 }
 
-export function RoomUpload() {
+export function RoomUpload({ previewOnly = false }: { previewOnly?: boolean } = {}) {
   const router = useRouter();
+  const [previewNotice, setPreviewNotice] = useState(false);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -125,6 +126,7 @@ export function RoomUpload() {
       isDecodingPendingRef.current = true;
       setIsDecodingPending(true);
       setErrorMessage(null);
+      setPreviewNotice(false);
 
       try {
         // 1. Basic file validation (size, MIME type, extension)
@@ -337,6 +339,10 @@ export function RoomUpload() {
     }
 
     if (!selectedFile || !previewUrl || !dimensions) return;
+    if (previewOnly) {
+      setPreviewNotice(true);
+      return;
+    }
 
     isSubmittingRef.current = true;
     setIsSubmitting(true);
@@ -452,11 +458,11 @@ export function RoomUpload() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
+    <div className="studio-upload mx-auto w-full">
       <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+        <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
           Upload Room Photo
-        </h1>
+        </h2>
         <p className="mt-2 text-sm text-gray-600 sm:text-base">
           Upload a clear photo of your room to detect furniture and explore
           redesign ideas.
@@ -488,7 +494,7 @@ export function RoomUpload() {
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+            className={`studio-dropzone flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
               isDragging
                 ? "border-blue-500 bg-blue-50/50"
                 : "border-gray-300 bg-gray-50/50 hover:border-gray-400 hover:bg-gray-50"
@@ -541,6 +547,12 @@ export function RoomUpload() {
             onReplace={triggerFileInput}
             disabled={isInputDisabled}
           />
+        )}
+
+        {previewNotice && (
+          <p role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+            Your image is ready. Nothing was uploaded in this local preview.
+          </p>
         )}
 
         {/* Error Notification */}

@@ -12,6 +12,7 @@ export interface AnalysisPanelProps {
   analysis?: UseRoomAnalysisReturn;
   /** Optional continuation callback for downstream furniture selection */
   onContinue?: () => void;
+  previewOnly?: boolean;
 }
 
 export function AnalysisPanel({
@@ -19,12 +20,8 @@ export function AnalysisPanel({
   projectContext,
   analysis: injectedAnalysis,
   onContinue,
+  previewOnly = false,
 }: AnalysisPanelProps) {
-  const internalAnalysis = useRoomAnalysis(projectId, projectContext?.image?.imageId);
-  const analysis = injectedAnalysis || internalAnalysis;
-
-  const { status, result, error, isAnalyzing, start, retry } = analysis;
-
   // Validate context identity and render-readiness
   const isContextValid = Boolean(
     projectContext &&
@@ -33,6 +30,10 @@ export function AnalysisPanel({
     projectContext.image.projectId === projectId &&
     isRenderReadyImage(projectContext.image, projectContext.previewUrl)
   );
+
+  const internalAnalysis = useRoomAnalysis(projectId, projectContext?.image?.imageId, isContextValid && !injectedAnalysis && !previewOnly);
+  const analysis = injectedAnalysis || internalAnalysis;
+  const { status, result, error, isAnalyzing, start, retry } = analysis;
 
   // Safely derive image inputs for unconditional hook invocation before recovery return
   const context = isContextValid ? projectContext : null;
@@ -122,12 +123,10 @@ export function AnalysisPanel({
     return (
       <div className="space-y-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900">
             Room Analysis
-          </h1>
-          <p className="text-sm text-gray-500">
-            Project ID: <span className="font-mono text-xs">{projectId}</span>
-          </p>
+          </h2>
+          <p className="text-sm text-gray-500">Review the furniture in your room before choosing what to change.</p>
         </div>
 
         {/* Status announcements for screen readers and visual confirmation */}
@@ -147,6 +146,7 @@ export function AnalysisPanel({
         {/* Mounted DetectionReview: interactive overlay and list, retry-only callback, truthful unavailable continuation */}
         <DetectionReview
           projectId={projectId}
+          previewOnly={previewOnly}
           imageUrl={imageUrl}
           imageWidth={context.image.width!}
           imageHeight={context.image.height!}
@@ -161,7 +161,7 @@ export function AnalysisPanel({
   // Default view for ready / analyzing / failed states: preserves original image and shows status & actions
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="studio-analysis-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-6 md:flex-row">
           {/* Preserved uploaded room image container */}
           <div className="relative flex-1 overflow-hidden rounded-lg bg-gray-100 min-h-[320px] flex items-center justify-center">
@@ -256,12 +256,10 @@ export function AnalysisPanel({
           {/* Analysis control & status column */}
           <div className="flex w-full flex-col justify-between md:w-80">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+              <h2 className="text-2xl font-bold tracking-tight text-gray-900">
                 Room Analysis
-              </h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Project ID: <span className="font-mono text-xs">{projectId}</span>
-              </p>
+              </h2>
+              <p className="mt-3 text-sm text-gray-600">A closer look at the furniture and details in your room.</p>
 
               {/* Status announcements for screen readers and visual indicators */}
               <div className="mt-4">

@@ -7,6 +7,7 @@ import { saveFurnitureDecision } from "../../services/decisionStorage";
 
 export interface DetectionReviewProps {
   projectId: string;
+  previewOnly?: boolean;
   imageUrl: string;
   imageWidth: number;
   imageHeight: number;
@@ -102,6 +103,7 @@ function validateDetectionData(
 
 export const DetectionReview: React.FC<DetectionReviewProps> = ({
   projectId,
+  previewOnly = false,
   imageUrl,
   imageWidth,
   imageHeight,
@@ -115,16 +117,18 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
   const [decisionError, setDecisionError] = useState<string | null>(null);
   const [savingDecisionIds, setSavingDecisionIds] = useState<Set<string>>(new Set());
   const savingDecisionIdsRef = useRef<Set<string>>(new Set());
+  const reviewGenerationRef = useRef(0);
   const isSavingDecision = savingDecisionIds.size > 0;
   // Clear stale selection whenever image or detections change
   useEffect(() => {
+    reviewGenerationRef.current += 1;
     setSelectedId(null);
     setHoveredId(null);
     setReviewDetections(detections);
     setDecisionError(null);
     savingDecisionIdsRef.current.clear();
     setSavingDecisionIds(new Set());
-  }, [imageUrl, detections]);
+  }, [projectId, imageUrl, detections]);
 
   const validationError = validateDetectionData(
     imageUrl,
@@ -236,13 +240,24 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
     setHoveredId(id);
   };
 
-  const handleDecisionChange = async (id: string,nextDecision: FurnitureDecision) => {
+  const handleDecisionChange = async (id: string, nextDecision: FurnitureDecision) => {
     if (savingDecisionIdsRef.current.has(id)) return;
 
     const current = reviewDetections.find((detection) => detection.id === id);
     if (!current || current.decision === nextDecision) return;
 
     const previousDecision = current.decision;
+
+    if (previewOnly) {
+      setReviewDetections((previous) =>
+        previous.map((detection) =>
+          detection.id === id ? { ...detection, decision: nextDecision } : detection
+        )
+      );
+      return;
+    }
+
+    const reviewGeneration = reviewGenerationRef.current;
 
     savingDecisionIdsRef.current.add(id);
     setSavingDecisionIds(new Set(savingDecisionIdsRef.current));
@@ -263,6 +278,8 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
         nextDecision
       );
 
+      if (reviewGenerationRef.current !== reviewGeneration) return;
+
       setReviewDetections((previous) =>
         previous.map((detection) =>
           detection.id === id
@@ -273,6 +290,7 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
 
       saveFurnitureDecision(projectId, id, saved.decision);
     } catch {
+      if (reviewGenerationRef.current !== reviewGeneration) return;
       setReviewDetections((previous) =>
         previous.map((detection) =>
           detection.id === id
@@ -285,8 +303,10 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
         "Could not save the furniture decision. Your previous choice was restored."
       );
     } finally {
-      savingDecisionIdsRef.current.delete(id);
-      setSavingDecisionIds(new Set(savingDecisionIdsRef.current));
+      if (reviewGenerationRef.current === reviewGeneration) {
+        savingDecisionIdsRef.current.delete(id);
+        setSavingDecisionIds(new Set(savingDecisionIdsRef.current));
+      }
     }
   };
   return (
@@ -317,6 +337,12 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
           />
         </div>
       </div>
+
+      {decisionError && (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {decisionError}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-neutral-200">
         <button

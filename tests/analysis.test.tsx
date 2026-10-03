@@ -120,7 +120,7 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
     });
   });
 
-  it("2. auto-load issues exactly one stored-analysis request while pending", async () => {
+  it("2. auto-load triggers the backend once then loads saved objects while pending", async () => {
     let resolveAnalysis: (val: any) => void = () => {};
     const pendingPromise = new Promise((resolve) => {
       resolveAnalysis = resolve;
@@ -163,7 +163,7 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
     });
 
     expect(api.getStoredAnalysis).toHaveBeenCalledTimes(1);
-    expect(api.requestAnalysis).not.toHaveBeenCalled();
+    expect(api.requestAnalysis).toHaveBeenCalledTimes(1);
   });
 
   it("3. failed analysis shows 'We could not analyze this image. Try again.' and retains image/project", async () => {
