@@ -1,8 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { DetectionReview } from "../src/features/room/DetectionReview";
 import { NormalizedDetection } from "../src/types/room";
+import * as api from "../src/services/api";
+
+vi.mock("../src/services/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/services/api")>();
+  return {
+    ...actual,
+    updateFurnitureDecision: vi.fn(),
+  };
+});
 
 describe("DetectionReview Component (ROOM-81)", () => {
   const defaultDetection: NormalizedDetection = {
@@ -504,5 +513,22 @@ describe("DetectionReview Component (ROOM-81)", () => {
       triggerImageLoad(img2, 1200, 800);
       expect(screen.getByTestId("detection-box-chair-1")).toBeInTheDocument();
     });
+  });
+
+  it("shows an error and restores the previous decision when saving fails", async () => {
+    vi.mocked(api.updateFurnitureDecision).mockRejectedValueOnce(
+      new Error("500 Internal Server Error")
+    );
+
+    render(<DetectionReview {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: /keep/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Could not save the furniture decision. Your previous choice was restored."
+      );
+    });
+    expect(screen.getByRole("radio", { name: /unsure/i })).toBeChecked();
   });
 });
