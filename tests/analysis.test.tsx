@@ -35,6 +35,7 @@ vi.mock("../src/services/api", async (importOriginal) => {
   return {
     ...actual,
     getStoredAnalysis: vi.fn(),
+    requestAnalysis: vi.fn(),
     createProject: vi.fn(),
     uploadRoomImage: vi.fn(),
   };
@@ -149,11 +150,20 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
       resolveAnalysis({
         projectId: "123",
         imageId: "5678",
-        detections: [],
+        detections: [
+          {
+            id: "det-1",
+            label: "Chair",
+            confidence: 0.95,
+            box: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+            decision: "UNSURE",
+          },
+        ],
       });
     });
 
     expect(api.getStoredAnalysis).toHaveBeenCalledTimes(1);
+    expect(api.requestAnalysis).not.toHaveBeenCalled();
   });
 
   it("3. failed analysis shows 'We could not analyze this image. Try again.' and retains image/project", async () => {
@@ -373,7 +383,8 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
   });
 
   it("8. empty detections is successful analysis, not an error", async () => {
-    vi.mocked(api.getStoredAnalysis).mockResolvedValueOnce({
+    // Nothing stored before or after the backend analysis run.
+    vi.mocked(api.getStoredAnalysis).mockResolvedValue({
       projectId: "123",
       imageId: "5678",
       detections: [],
@@ -395,6 +406,8 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
         screen.getByText(/0 objects detected/i)
       ).toBeInTheDocument();
     });
+
+    expect(api.requestAnalysis).toHaveBeenCalledTimes(1);
   });
 
   it("9. AnalyzePage route integration renders matching context and recovery on missing context", async () => {
@@ -424,7 +437,7 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
     // Case B: Seeded matching context in storage
     saveProjectContext(sampleContext);
 
-    vi.mocked(api.getStoredAnalysis).mockResolvedValueOnce({
+    vi.mocked(api.getStoredAnalysis).mockResolvedValue({
       projectId: "123",
       imageId: "5678",
       detections: [],
@@ -444,14 +457,12 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("img", {
-          name: /uploaded room image/i,
-        })
+        screen.getByText(/analysis complete/i)
       ).toBeInTheDocument();
 
       expect(
-        screen.getByText(/analysis complete/i)
-      ).toBeInTheDocument();
+        screen.getByRole("img", { name: /room preview/i })
+      ).toHaveAttribute("src", sampleContext.previewUrl);
     });
 
     await act(async () => {

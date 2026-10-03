@@ -13,6 +13,8 @@ vi.mock("../src/services/api", async (importOriginal) => {
   return {
     ...actual,
     analyzeRoom: vi.fn(),
+    getStoredAnalysis: vi.fn(),
+    requestAnalysis: vi.fn(),
     createProject: vi.fn(),
     uploadRoomImage: vi.fn(),
   };
@@ -302,7 +304,7 @@ describe("Integration: Room Analysis & DetectionReview Mount Flow", () => {
       detections: sampleDetections,
     };
 
-    vi.mocked(api.analyzeRoom)
+    vi.mocked(api.getStoredAnalysis)
       .mockRejectedValueOnce(new Error("503 Service Unavailable"))
       .mockResolvedValueOnce(successResult);
 
@@ -313,11 +315,7 @@ describe("Integration: Room Analysis & DetectionReview Mount Flow", () => {
       />
     );
 
-    // Initial ready state: trigger first analysis
-    const startButton = screen.getByRole("button", { name: /start analysis/i });
-    fireEvent.click(startButton);
-
-    // First attempt fails with curated safe fallback
+    // Analysis loads automatically; first attempt fails with curated safe fallback
     await waitFor(() => {
       const alert = screen.getByRole("alert");
       expect(alert).toHaveTextContent("We could not analyze this image. Try again.");
@@ -336,8 +334,8 @@ describe("Integration: Room Analysis & DetectionReview Mount Flow", () => {
       expect(screen.getByText(/modern chair · 92%/i)).toBeInTheDocument();
     });
 
-    // Verification: exactly two analyzeRoom calls, and ZERO calls to createProject or uploadRoomImage
-    expect(api.analyzeRoom).toHaveBeenCalledTimes(2);
+    // Verification: exactly two analysis loads, and ZERO calls to createProject or uploadRoomImage
+    expect(api.getStoredAnalysis).toHaveBeenCalledTimes(2);
     expect(api.createProject).not.toHaveBeenCalled();
     expect(api.uploadRoomImage).not.toHaveBeenCalled();
   });
@@ -365,6 +363,7 @@ describe("Integration: Room Analysis & DetectionReview Mount Flow", () => {
 
     render(
       <DetectionReview
+        projectId={TEST_PROJECT_ID}
         imageUrl="https://example.com/edge-room.jpg"
         imageWidth={640}
         imageHeight={480}

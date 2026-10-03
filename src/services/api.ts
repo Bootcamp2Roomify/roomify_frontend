@@ -41,8 +41,9 @@ const UUID_REGEX =
 export function isValidUuid(id: string): boolean {
   return UUID_REGEX.test(id.trim());
 }
+// The backend identifies room projects by UUID.
 function isValidProjectId(id: string): boolean {
-  return /^[1-9]\d*$/.test(id.trim());
+  return isValidUuid(id);
 }
 const FURNITURE_DECISIONS: FurnitureDecision[] = [
   "KEEP",
@@ -695,6 +696,61 @@ export async function analyzeRoom(
   };
 }
 
+/**
+ * Runs vision analysis on the backend and persists the detected objects.
+ * POST /api/projects/{projectId}/analysis
+ *
+ * The backend returns saved results without re-running vision for an already
+ * analyzed project, so this is safe to repeat. Load the persisted objects
+ * (with their stable UUIDs) afterwards via getStoredAnalysis.
+ */
+export async function requestAnalysis(
+  projectId: string,
+  signal?: AbortSignal
+): Promise<void> {
+  const cleanProjectId = projectId.trim();
+
+  if (!isValidProjectId(cleanProjectId)) {
+    throw new ApiError("Valid project UUID is required for room analysis", 400);
+  }
+
+  const baseUrl = getApiBaseUrl();
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${baseUrl}/api/projects/${encodeURIComponent(cleanProjectId)}/analysis`,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+        signal,
+      }
+    );
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw err;
+    }
+    throw new ApiError(
+      `Network error while analyzing room: ${err instanceof Error ? err.message : String(err)}`,
+      0
+    );
+  }
+
+  if (!response.ok) {
+    const errorDetails = await parseErrorDetails(response);
+    let message = `Failed to analyze room: Server returned ${response.status}`;
+    if (response.status === 409) {
+      message = "Invalid project state or missing active image for analysis (409 Conflict).";
+    } else if (response.status === 503) {
+      message = "Vision service unavailable (503). Analysis could not be completed; please retry.";
+    }
+
+    throw new ApiError(message, response.status, errorDetails);
+  }
+}
+
 export async function updateFurnitureDecision(
   projectId: string,
   objectId: string,
@@ -804,7 +860,7 @@ export async function getStoredAnalysis(
   const cleanProjectId = projectId.trim();
 
   if (!isValidProjectId(cleanProjectId)) {
-    throw new ApiError("Valid numeric project ID is required for stored analysis", 400);
+    throw new ApiError("Valid project UUID is required for stored analysis", 400);
   }
 
   const baseUrl = getApiBaseUrl();
