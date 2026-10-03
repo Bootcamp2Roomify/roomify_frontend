@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { NormalizedDetection } from "../../types/room";
+import React, { useState, useEffect, useRef } from "react";
+import { FurnitureDecision, NormalizedDetection } from "../../types/room";
 import { DetectionOverlay } from "./DetectionOverlay";
 import { DetectionList } from "./DetectionList";
+import { updateFurnitureDecision } from "../../services/api";
+import { saveFurnitureDecision } from "../../services/decisionStorage";
 
 export interface DetectionReviewProps {
+  projectId: string;
   imageUrl: string;
   imageWidth: number;
   imageHeight: number;
@@ -98,6 +101,7 @@ function validateDetectionData(
 }
 
 export const DetectionReview: React.FC<DetectionReviewProps> = ({
+  projectId,
   imageUrl,
   imageWidth,
   imageHeight,
@@ -107,11 +111,19 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-
+  const [reviewDetections, setReviewDetections] = useState<NormalizedDetection[]>(detections);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
+  const [savingDecisionIds, setSavingDecisionIds] = useState<Set<string>>(new Set());
+  const savingDecisionIdsRef = useRef<Set<string>>(new Set());
+  const isSavingDecision = savingDecisionIds.size > 0;
   // Clear stale selection whenever image or detections change
   useEffect(() => {
     setSelectedId(null);
     setHoveredId(null);
+    setReviewDetections(detections);
+    setDecisionError(null);
+    savingDecisionIdsRef.current.clear();
+    setSavingDecisionIds(new Set());
   }, [imageUrl, detections]);
 
   const validationError = validateDetectionData(
@@ -224,6 +236,59 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
     setHoveredId(id);
   };
 
+  const handleDecisionChange = async (id: string,nextDecision: FurnitureDecision) => {
+    if (savingDecisionIdsRef.current.has(id)) return;
+
+    const current = reviewDetections.find((detection) => detection.id === id);
+    if (!current || current.decision === nextDecision) return;
+
+    const previousDecision = current.decision;
+
+    savingDecisionIdsRef.current.add(id);
+    setSavingDecisionIds(new Set(savingDecisionIdsRef.current));
+    setDecisionError(null);
+
+    setReviewDetections((previous) =>
+      previous.map((detection) =>
+        detection.id === id
+          ? { ...detection, decision: nextDecision }
+          : detection
+      )
+    );
+
+    try {
+      const saved = await updateFurnitureDecision(
+        projectId,
+        id,
+        nextDecision
+      );
+
+      setReviewDetections((previous) =>
+        previous.map((detection) =>
+          detection.id === id
+            ? { ...detection, decision: saved.decision }
+            : detection
+        )
+      );
+
+      saveFurnitureDecision(projectId, id, saved.decision);
+    } catch {
+      setReviewDetections((previous) =>
+        previous.map((detection) =>
+          detection.id === id
+            ? { ...detection, decision: previousDecision }
+            : detection
+        )
+      );
+
+      setDecisionError(
+        "Could not save the furniture decision. Your previous choice was restored."
+      );
+    } finally {
+      savingDecisionIdsRef.current.delete(id);
+      setSavingDecisionIds(new Set(savingDecisionIdsRef.current));
+    }
+  };
   return (
     <div className="w-full flex flex-col gap-6" data-testid="detection-review">
       {/* Mobile: list below image. Desktop: list beside image. */}
@@ -233,21 +298,22 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
             imageUrl={imageUrl}
             imageWidth={imageWidth}
             imageHeight={imageHeight}
-            detections={detections}
+            detections={reviewDetections}
             selectedId={selectedId}
             hoveredId={hoveredId}
             onSelect={handleSelect}
             onHover={handleHover}
           />
         </div>
-
         <div className="lg:col-span-1 w-full bg-neutral-50/70 p-4 rounded-xl border border-neutral-200">
           <DetectionList
-            detections={detections}
+            detections={reviewDetections}
             selectedId={selectedId}
             hoveredId={hoveredId}
             onSelect={handleSelect}
             onHover={handleHover}
+            onDecisionChange={handleDecisionChange}
+            savingDecisionIds={savingDecisionIds}
           />
         </div>
       </div>
@@ -266,9 +332,10 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
             <button
               type="button"
               onClick={onContinue}
+              disabled={isSavingDecision}
               className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
-              Continue
+              {isSavingDecision ? "Saving..." : "Continue"}
             </button>
           ) : (
             <span className="text-sm text-neutral-500 italic">

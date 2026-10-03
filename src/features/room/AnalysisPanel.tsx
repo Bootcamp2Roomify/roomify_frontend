@@ -20,7 +20,7 @@ export function AnalysisPanel({
   analysis: injectedAnalysis,
   onContinue,
 }: AnalysisPanelProps) {
-  const internalAnalysis = useRoomAnalysis(projectId);
+  const internalAnalysis = useRoomAnalysis(projectId, projectContext?.image?.imageId);
   const analysis = injectedAnalysis || internalAnalysis;
 
   const { status, result, error, isAnalyzing, start, retry } = analysis;
@@ -146,6 +146,7 @@ export function AnalysisPanel({
 
         {/* Mounted DetectionReview: interactive overlay and list, retry-only callback, truthful unavailable continuation */}
         <DetectionReview
+          projectId={projectId}
           imageUrl={imageUrl}
           imageWidth={context.image.width!}
           imageHeight={context.image.height!}
@@ -153,6 +154,9 @@ export function AnalysisPanel({
           onRetry={retry}
           onContinue={onContinue}
         />
+        </div>
+    );
+  }
   // Recovery UI when context is missing, corrupt, or mismatched
   if (!isContextValid) {
     return (
@@ -310,26 +314,6 @@ export function AnalysisPanel({
                 )}
               </div>
             </div>
-
-            {/* Actions: Start / Retry */}
-
-                {status === "succeeded" && (
-                  <div
-                    role="status"
-                    aria-live="polite"
-                    className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800"
-                  >
-                    <p className="font-semibold">Analysis complete! Results ready.</p>
-                    <p className="mt-1 text-xs text-green-700">
-                      {result?.detections.length === 0
-                        ? "0 objects detected in this room."
-                        : `${result?.detections.length} objects detected.`}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Actions: Start / Retry / Proceed */}
             <div className="mt-6 flex flex-col gap-3">
               {(status === "ready" || status === "analyzing") && (

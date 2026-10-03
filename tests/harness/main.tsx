@@ -14,6 +14,7 @@ const standardDetection: NormalizedDetection = {
     width: 0.3,
     height: 0.4,
   },
+  decision: "UNSURE",
 };
 
 const tallDetection: NormalizedDetection = {
@@ -26,6 +27,7 @@ const tallDetection: NormalizedDetection = {
     width: 0.5,
     height: 0.7,
   },
+  decision: "UNSURE",
 };
 
 const invalidDetection: NormalizedDetection = {
@@ -38,6 +40,7 @@ const invalidDetection: NormalizedDetection = {
     width: 0.4,
     height: 0.3, // Out of bounds
   },
+  decision: "UNSURE",
 };
 
 const standardImageSvg =
@@ -269,6 +272,7 @@ export const HarnessApp: React.FC = () => {
 
       <main className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
         <DetectionReview
+          projectId="1"
           imageUrl={imageUrl}
           imageWidth={imageWidth}
           imageHeight={imageHeight}

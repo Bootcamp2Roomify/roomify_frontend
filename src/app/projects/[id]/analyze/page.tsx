@@ -1,6 +1,7 @@
 "use client";
 
 import React, { use, useState, useEffect, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { loadProjectContext } from "@/features/room/projectContext";
 import { AnalysisPanel } from "@/features/room/AnalysisPanel";
 import { ProjectContext } from "@/types/room";
@@ -11,7 +12,7 @@ interface PageProps {
 
 function AnalyzeContent({ params }: PageProps) {
   const { id: projectId } = use(params);
-
+  const router = useRouter();
   const [context, setContext] = useState<ProjectContext | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -21,6 +22,9 @@ function AnalyzeContent({ params }: PageProps) {
     setContext(loadedContext);
     setIsLoaded(true);
   }, [projectId]);
+  const handleContinue = () => {
+    router.push(`/rooms/${encodeURIComponent(projectId)}`);
+  };
 
   if (!isLoaded) {
     return (
@@ -41,6 +45,7 @@ function AnalyzeContent({ params }: PageProps) {
       <AnalysisPanel
         projectId={projectId}
         projectContext={context}
+        onContinue={handleContinue}
       />
     </main>
   );

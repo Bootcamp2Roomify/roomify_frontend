@@ -13,21 +13,27 @@ import * as api from "../src/services/api";
 import { ProjectContext } from "../src/types/room";
 import { saveProjectContext, clearProjectContext } from "../src/features/room/projectContext";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
+
 // Spy on API service
 vi.mock("../src/services/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/services/api")>();
   return {
     ...actual,
-    analyzeRoom: vi.fn(),
+    getStoredAnalysis: vi.fn(),
     createProject: vi.fn(),
     uploadRoomImage: vi.fn(),
   };
 });
 
 const sampleContext: ProjectContext = {
-  projectId: "proj-1234-uuid",
+  projectId: "123",
   image: {
-    projectId: "proj-1234-uuid",
+    projectId: "123",
     imageId: "img-5678-uuid",
     imageUrl: "https://example.com/room.jpg",
     width: 1024,
