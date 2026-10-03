@@ -15,6 +15,7 @@ describe("DetectionReview Component (ROOM-81)", () => {
       width: 0.3,
       height: 0.4,
     },
+    decision: "UNSURE",
   };
 
   const defaultProps = {
@@ -108,27 +109,30 @@ describe("DetectionReview Component (ROOM-81)", () => {
     expect(listItem).toHaveAttribute("aria-pressed", "true");
     expect(box).toHaveAttribute("aria-pressed", "true");
   });
-
-  it("keyboard Enter and Space selection works and focus is visible", () => {
+  it("selection controls are native keyboard-accessible buttons with visible focus", () => {
     render(<DetectionReview {...defaultProps} />);
     triggerImageLoad(screen.getByRole("img", { name: /room/i }), 1200, 800);
 
     const listItem = screen.getByRole("button", { name: /chair · 83%/i });
     const box = screen.getByTestId("detection-box-chair-1");
 
-    // Both should have focus visible styling classes
+    expect(listItem.tagName).toBe("BUTTON");
+    expect(box.tagName).toBe("BUTTON");
+
     expect(listItem.className).toMatch(/focus(-visible)?:/);
     expect(box.className).toMatch(/focus(-visible)?:/);
 
-    // Enter on list item selects
     listItem.focus();
-    fireEvent.keyDown(listItem, { key: "Enter", code: "Enter" });
-    expect(listItem).toHaveAttribute("aria-pressed", "true");
+    expect(listItem).toHaveFocus();
 
-    // Space on box toggles selection
+    fireEvent.click(listItem);
+    expect(listItem).toHaveAttribute("aria-pressed", "true");
+    expect(box).toHaveAttribute("aria-pressed", "true");
+
     box.focus();
-    fireEvent.keyDown(box, { key: " ", code: "Space" });
-    // Toggling when already selected unselects or keeps selected? Clicking/pressing toggles
+    expect(box).toHaveFocus();
+
+    fireEvent.click(box);
     expect(box).toHaveAttribute("aria-pressed", "false");
     expect(listItem).toHaveAttribute("aria-pressed", "false");
   });
@@ -220,6 +224,7 @@ describe("DetectionReview Component (ROOM-81)", () => {
       label: "table",
       confidence: 0.91,
       box: { x: 0.2, y: 0.3, width: 0.4, height: 0.3 },
+      decision: "UNSURE",
     };
 
     rerender(
@@ -241,6 +246,7 @@ describe("DetectionReview Component (ROOM-81)", () => {
         label: "chair",
         confidence: 1.5, // Invalid confidence > 1
         box: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+        decision: "UNSURE",
       },
     ];
 
@@ -272,6 +278,7 @@ describe("DetectionReview Component (ROOM-81)", () => {
         label: "chair",
         confidence: 0.85,
         box: { x: 0.8, y: 0.5, width: 0.4, height: 0.3 }, // 0.8 + 0.4 = 1.2 > 1
+        decision: "UNSURE",
       },
     ];
 
@@ -294,6 +301,7 @@ describe("DetectionReview Component (ROOM-81)", () => {
         label: "chair",
         confidence: 0.85,
         box: { x: 0.8, y: 0.2, width: 0.20005, height: 0.3 },
+        decision: "UNSURE",
       },
     ];
 
@@ -314,6 +322,7 @@ describe("DetectionReview Component (ROOM-81)", () => {
         label: "chair",
         confidence: 0.85,
         box: { x: 0.8, y: 0.2, width: 0.2, height: 0.3 },
+        decision: "UNSURE",
       },
     ];
 

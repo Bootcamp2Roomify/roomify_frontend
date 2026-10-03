@@ -24,11 +24,18 @@ export interface NormalizedBox {
   height: number;
 }
 
+export type FurnitureDecision =
+  | "KEEP"
+  | "REPLACE"
+  | "REMOVE"
+  | "UNSURE";
+
 export interface NormalizedDetection {
   id: string;
   label: string;
   confidence: number;
   box: NormalizedBox;
+  decision: FurnitureDecision;
 }
 
 export interface AnalysisResult {

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { AnalysisResult } from "../../types/room";
-import { analyzeRoom } from "../../services/api";
+import { getStoredAnalysis } from "../../services/api";
 
 export type AnalysisStatus = "ready" | "analyzing" | "succeeded" | "failed";
 
@@ -26,7 +26,7 @@ export interface UseRoomAnalysisReturn {
   retry: () => Promise<void>;
 }
 
-export function useRoomAnalysis(projectId: string): UseRoomAnalysisReturn {
+export function useRoomAnalysis(projectId: string, expectedImageId?: string): UseRoomAnalysisReturn {
   const [status, setStatus] = useState<AnalysisStatus>("ready");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +83,7 @@ export function useRoomAnalysis(projectId: string): UseRoomAnalysisReturn {
     setError(null);
 
     try {
-      const analysisResult = await analyzeRoom(requestedProject, controller.signal);
+      const analysisResult = await getStoredAnalysis(requestedProject, expectedImageId?.trim() || undefined, controller.signal);
 
       // Verify controller identity and active project before state mutation
       if (
@@ -118,7 +118,7 @@ export function useRoomAnalysis(projectId: string): UseRoomAnalysisReturn {
         abortControllerRef.current = null;
       }
     }
-  }, [projectId]);
+  }, [projectId, expectedImageId]);
 
   const start = useCallback(() => {
     return executeAnalysis();
@@ -127,6 +127,11 @@ export function useRoomAnalysis(projectId: string): UseRoomAnalysisReturn {
   const retry = useCallback(() => {
     return executeAnalysis();
   }, [executeAnalysis]);
+
+  useEffect(() => {
+    if (!projectId || projectId.trim() === "") return;
+    void executeAnalysis();
+  }, [projectId, executeAnalysis]);
 
   return {
     status,

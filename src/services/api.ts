@@ -3,9 +3,11 @@ import {
   NormalizedDetection,
   RoomImage,
   RoomProject,
+  FurnitureDecision,
 } from "../types/room";
 import { loadProjectContext } from "../features/room/projectContext";
 import { validateRoomFile } from "../utils/fileValidation";
+import { loadFurnitureDecisions } from "./decisionStorage";
 
 export class ApiError extends Error {
   constructor(
@@ -26,6 +28,7 @@ export class ContractBlockedError extends Error {
       | "MISSING_IMAGE_DIMENSIONS"
       | "INVALID_COORDINATE_MODE"
       | "INVALID_DETECTION_GEOMETRY"
+      | "INVALID_FURNITURE_DECISION"
   ) {
     super(message);
     this.name = "ContractBlockedError";
@@ -37,6 +40,34 @@ const UUID_REGEX =
 
 export function isValidUuid(id: string): boolean {
   return UUID_REGEX.test(id.trim());
+}
+function isValidProjectId(id: string): boolean {
+  return /^[1-9]\d*$/.test(id.trim());
+}
+const FURNITURE_DECISIONS: FurnitureDecision[] = [
+  "KEEP",
+  "REPLACE",
+  "REMOVE",
+  "UNSURE",
+];
+
+function normalizeFurnitureDecision(
+  decision: string | null | undefined
+): FurnitureDecision {
+  if (decision == null || decision.trim() === "") {
+    return "UNSURE";
+  }
+
+  const normalized = decision.trim().toUpperCase();
+
+  if (FURNITURE_DECISIONS.includes(normalized as FurnitureDecision)) {
+    return normalized as FurnitureDecision;
+  }
+
+  throw new ContractBlockedError(
+    `Invalid furniture decision "${decision}".`,
+    "INVALID_FURNITURE_DECISION"
+  );
 }
 
 const getApiBaseUrl = (): string => {
@@ -89,6 +120,7 @@ export interface RawVisionDetection {
   confidence: number;
   bounding_box?: RawBoundingBox;
   box?: RawBoundingBox;
+  decision?: string | null;
 }
 
 export interface RawVisionAnalysisResponse {
@@ -99,6 +131,32 @@ export interface RawVisionAnalysisResponse {
   height?: number;
   detections?: RawVisionDetection[];
   coordinateMode?: "pixel" | "normalized";
+}
+
+export interface RawStoredBoundingBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface RawStoredDetectedObject {
+  objectId: string;
+  imageId: string | number;
+  label: string;
+  confidence: number;
+  bbox: RawStoredBoundingBox;
+  modelVersion?: string | null;
+}
+
+export interface RawStoredAnalysisResponse {
+  projectId: string | number;
+  objects: RawStoredDetectedObject[];
+}
+
+export interface FurnitureDecisionResponse {
+  objectId: string;
+  decision: FurnitureDecision;
 }
 
 /**
@@ -254,6 +312,7 @@ export function normalizeDetections(
         width: normW,
         height: normH,
       },
+      decision: normalizeFurnitureDecision(raw.decision),
     };
   });
 }
@@ -633,5 +692,303 @@ export async function analyzeRoom(
     projectId: cleanProjectId,
     imageId: resolvedImageId,
     detections: normalized,
+  };
+}
+
+export async function updateFurnitureDecision(
+  projectId: string,
+  objectId: string,
+  decision: FurnitureDecision,
+  signal?: AbortSignal
+): Promise<FurnitureDecisionResponse> {
+  const cleanProjectId = projectId.trim();
+  const cleanObjectId = objectId.trim();
+
+  if (!isValidProjectId(cleanProjectId)) {
+    throw new ApiError("Valid project ID is required for furniture decision update", 400);
+  }
+
+  if (!isValidUuid(cleanObjectId)) {
+    throw new ApiError("Valid object UUID is required for furniture decision update", 400);
+  }
+
+  const baseUrl = getApiBaseUrl();
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${baseUrl}/api/projects/${encodeURIComponent(cleanProjectId)}/objects/${encodeURIComponent(cleanObjectId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ decision }),
+        signal,
+      }
+    );
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw err;
+    }
+
+    throw new ApiError(
+      `Network error while updating furniture decision: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+      0
+    );
+  }
+
+  if (!response.ok) {
+    const errorDetails = await parseErrorDetails(response);
+
+    throw new ApiError(
+      `Failed to update furniture decision: Server returned ${response.status}`,
+      response.status,
+      errorDetails
+    );
+  }
+
+  const data = await parseResponseBody(response);
+
+  if (!data || typeof data !== "object") {
+    throw new ApiError(
+      "Malformed furniture decision response: expected object",
+      response.status,
+      data
+    );
+  }
+
+  const result = data as {
+    objectId?: unknown;
+    decision?: unknown;
+  };
+
+  if (
+    typeof result.objectId !== "string" ||
+    result.objectId.trim() !== cleanObjectId
+  ) {
+    throw new ApiError(
+      "Malformed furniture decision response: objectId mismatch",
+      response.status,
+      data
+    );
+  }
+
+  const returnedDecision =
+    typeof result.decision === "string"
+      ? normalizeFurnitureDecision(result.decision)
+      : null;
+
+  if (!returnedDecision) {
+    throw new ApiError(
+      "Malformed furniture decision response: missing decision",
+      response.status,
+      data
+    );
+  }
+
+  return {
+    objectId: cleanObjectId,
+    decision: returnedDecision,
+  };
+}
+
+export async function getStoredAnalysis(
+  projectId: string,
+  expectedImageId?: string,
+  signal?: AbortSignal
+): Promise<AnalysisResult> {
+  const cleanProjectId = projectId.trim();
+
+  if (!isValidProjectId(cleanProjectId)) {
+    throw new ApiError("Valid numeric project ID is required for stored analysis", 400);
+  }
+
+  const baseUrl = getApiBaseUrl();
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${baseUrl}/api/projects/${encodeURIComponent(cleanProjectId)}/analysis`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        signal,
+      }
+    );
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw err;
+    }
+
+    throw new ApiError(
+      `Network error while loading stored analysis: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+      0
+    );
+  }
+
+  if (!response.ok) {
+    const errorDetails = await parseErrorDetails(response);
+
+    throw new ApiError(
+      `Failed to load stored analysis: Server returned ${response.status}`,
+      response.status,
+      errorDetails
+    );
+  }
+
+  const data = await parseResponseBody(response);
+
+  if (!data || typeof data !== "object") {
+    throw new ApiError(
+      "Malformed stored analysis response: expected object",
+      response.status,
+      data
+    );
+  }
+
+  const result = data as RawStoredAnalysisResponse;
+
+  if (String(result.projectId).trim() !== cleanProjectId) {
+    throw new ApiError(
+      "Malformed stored analysis response: projectId mismatch",
+      response.status,
+      data
+    );
+  }
+
+  if (!Array.isArray(result.objects)) {
+    throw new ApiError(
+      "Malformed stored analysis response: objects must be an array",
+      response.status,
+      data
+    );
+  }
+
+  const imageIds = new Set<string>();
+  const savedDecisions = loadFurnitureDecisions(cleanProjectId);
+  const detections: NormalizedDetection[] = result.objects.map(
+    (object, index) => {
+      if (
+        typeof object.objectId !== "string" ||
+        !isValidUuid(object.objectId)
+      ) {
+        throw new ApiError(
+          `Malformed stored analysis object at index ${index}: invalid objectId`,
+          response.status,
+          object
+        );
+      }
+
+      const imageId = String(object.imageId).trim();
+
+      if (!imageId) {
+        throw new ApiError(
+          `Malformed stored analysis object "${object.objectId}": invalid imageId`,
+          response.status,
+          object
+        );
+      }
+
+      imageIds.add(imageId);
+
+      if (
+        typeof object.label !== "string" ||
+        object.label.trim() === ""
+      ) {
+        throw new ApiError(
+          `Malformed stored analysis object "${object.objectId}": invalid label`,
+          response.status,
+          object
+        );
+      }
+
+      if (
+        typeof object.confidence !== "number" ||
+        !Number.isFinite(object.confidence) ||
+        object.confidence < 0 ||
+        object.confidence > 1
+      ) {
+        throw new ApiError(
+          `Malformed stored analysis object "${object.objectId}": invalid confidence`,
+          response.status,
+          object
+        );
+      }
+
+      const box = object.bbox;
+
+      if (
+        !box ||
+        typeof box.x !== "number" ||
+        typeof box.y !== "number" ||
+        typeof box.w !== "number" ||
+        typeof box.h !== "number" ||
+        !Number.isFinite(box.x) ||
+        !Number.isFinite(box.y) ||
+        !Number.isFinite(box.w) ||
+        !Number.isFinite(box.h) ||
+        box.x < 0 ||
+        box.y < 0 ||
+        box.w <= 0 ||
+        box.h <= 0 ||
+        box.x + box.w > 1 ||
+        box.y + box.h > 1
+      ) {
+        throw new ApiError(
+          `Malformed stored analysis object "${object.objectId}": invalid bbox`,
+          response.status,
+          object
+        );
+      }
+
+      return {
+        id: object.objectId.trim(),
+        label: object.label.trim(),
+        confidence: object.confidence,
+        box: {
+          x: box.x,
+          y: box.y,
+          width: box.w,
+          height: box.h,
+        },
+        decision: savedDecisions[object.objectId.trim()] ?? "UNSURE",
+      };
+    }
+  );
+
+  if (imageIds.size > 1) {
+    throw new ApiError(
+      "Malformed stored analysis response: active objects belong to multiple images",
+      response.status,
+      data
+    );
+  }
+
+  const storedImageId = imageIds.values().next().value as string | undefined;
+
+  if (
+    expectedImageId &&
+    storedImageId &&
+    storedImageId !== expectedImageId
+  ) {
+    throw new ApiError(
+      "Stored analysis belongs to a different room image",
+      response.status,
+      data
+    );
+  }
+
+  return {
+    projectId: cleanProjectId,
+    imageId: storedImageId ?? expectedImageId ?? "",
+    detections,
   };
 }

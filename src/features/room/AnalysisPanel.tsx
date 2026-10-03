@@ -20,7 +20,7 @@ export function AnalysisPanel({
   analysis: injectedAnalysis,
   onContinue,
 }: AnalysisPanelProps) {
-  const internalAnalysis = useRoomAnalysis(projectId);
+  const internalAnalysis = useRoomAnalysis(projectId, projectContext?.image?.imageId);
   const analysis = injectedAnalysis || internalAnalysis;
 
   const { status, result, error, isAnalyzing, start, retry } = analysis;
@@ -145,7 +145,8 @@ export function AnalysisPanel({
         </div>
 
         {/* Mounted DetectionReview: interactive overlay and list, retry-only callback, truthful unavailable continuation */}
-                        <DetectionReview
+        <DetectionReview
+          projectId={projectId}
           imageUrl={imageUrl}
           imageWidth={context.image.width!}
           imageHeight={context.image.height!}
@@ -292,8 +293,6 @@ export function AnalysisPanel({
                 )}
               </div>
             </div>
-
-
             {/* Actions: Start / Retry / Proceed */}
             <div className="mt-6 flex flex-col gap-3">
               {(status === "ready" || status === "analyzing") && (

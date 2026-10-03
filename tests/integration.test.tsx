@@ -40,13 +40,16 @@ const sampleDetections: NormalizedDetection[] = [
     label: "Modern Chair",
     confidence: 0.92,
     box: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+    decision: "UNSURE",
   },
   {
     id: "det-table-1",
     label: "Coffee Table",
     confidence: 0.88,
     box: { x: 0.5, y: 0.5, width: 0.4, height: 0.3 },
+    decision: "UNSURE",
   },
+
 ];
 
 describe("Integration: Room Analysis & DetectionReview Mount Flow", () => {

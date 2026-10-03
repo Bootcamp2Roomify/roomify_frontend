@@ -652,6 +652,7 @@ describe("Shared API & Adapters", () => {
           width: 0.2,
           height: 0.2,
         },
+        decision: "UNSURE",
       });
     });
 
