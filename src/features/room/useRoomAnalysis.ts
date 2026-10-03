@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { AnalysisResult } from "../../types/room";
-import { getStoredAnalysis } from "../../services/api";
+import { getStoredAnalysis, requestAnalysis } from "../../services/api";
 
 export type AnalysisStatus = "ready" | "analyzing" | "succeeded" | "failed";
 
@@ -83,7 +83,15 @@ export function useRoomAnalysis(projectId: string, expectedImageId?: string): Us
     setError(null);
 
     try {
-      const analysisResult = await getStoredAnalysis(requestedProject, expectedImageId?.trim() || undefined, controller.signal);
+      const imageId = expectedImageId?.trim() || undefined;
+      let analysisResult = await getStoredAnalysis(requestedProject, imageId, controller.signal);
+
+      // Nothing persisted yet: run analysis on the backend, then reload the
+      // persisted objects so they carry the stable IDs used for decisions.
+      if (analysisResult.detections.length === 0) {
+        await requestAnalysis(requestedProject, controller.signal);
+        analysisResult = await getStoredAnalysis(requestedProject, imageId, controller.signal);
+      }
 
       // Verify controller identity and active project before state mutation
       if (

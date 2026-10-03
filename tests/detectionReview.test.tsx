@@ -19,6 +19,7 @@ describe("DetectionReview Component (ROOM-81)", () => {
   };
 
   const defaultProps = {
+    projectId: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     imageUrl: "https://example.com/room.jpg",
     imageWidth: 1200,
     imageHeight: 800,
