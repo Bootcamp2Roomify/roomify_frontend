@@ -72,7 +72,8 @@ function normalizeFurnitureDecision(
 }
 
 const getApiBaseUrl = (): string => {
-  return process.env.NEXT_PUBLIC_API_URL || "";
+  // Next.js forwards /api to Spring Boot, avoiding browser CORS on local ports.
+  return "";
 };
 
 /**
@@ -945,7 +946,7 @@ export async function getStoredAnalysis(
 
       const imageId = String(object.imageId).trim();
 
-      if (!imageId) {
+      if (!/^[1-9]\d*$/.test(imageId)) {
         throw new ApiError(
           `Malformed stored analysis object "${object.objectId}": invalid imageId`,
           response.status,
