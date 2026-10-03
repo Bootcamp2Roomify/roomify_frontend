@@ -57,3 +57,6 @@ temp/
 # Windows
 Thumbs.db
 desktop.ini
+
+# Ignore local dependency directories and worktree symlinks.
+/node_modules

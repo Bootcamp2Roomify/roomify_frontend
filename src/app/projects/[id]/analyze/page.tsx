@@ -4,6 +4,7 @@ import React, { use, useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { loadProjectContext } from "@/features/room/projectContext";
 import { AnalysisPanel } from "@/features/room/AnalysisPanel";
+import { RoomStudio } from "@/components/studio/RoomStudio";
 import { ProjectContext } from "@/types/room";
 
 interface PageProps {
@@ -28,7 +29,7 @@ function AnalyzeContent({ params }: PageProps) {
 
   if (!isLoaded) {
     return (
-      <main className="min-h-screen p-6 max-w-4xl mx-auto">
+      <RoomStudio step={1}>
         <div
           role="status"
           aria-live="polite"
@@ -36,18 +37,18 @@ function AnalyzeContent({ params }: PageProps) {
         >
           Loading project...
         </div>
-      </main>
+      </RoomStudio>
     );
   }
 
   return (
-    <main className="min-h-screen p-6 max-w-4xl mx-auto">
+    <RoomStudio step={1}>
       <AnalysisPanel
         projectId={projectId}
         projectContext={context}
         onContinue={handleContinue}
       />
-    </main>
+    </RoomStudio>
   );
 }
 
@@ -55,7 +56,7 @@ export default function AnalyzePage({ params }: PageProps) {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen p-6 max-w-4xl mx-auto">
+        <RoomStudio step={1}>
           <div
             role="status"
             aria-live="polite"
@@ -63,7 +64,7 @@ export default function AnalyzePage({ params }: PageProps) {
           >
             Loading project...
           </div>
-        </main>
+        </RoomStudio>
       }
     >
       <AnalyzeContent params={params} />
