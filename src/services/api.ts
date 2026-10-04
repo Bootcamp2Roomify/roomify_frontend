@@ -1048,3 +1048,106 @@ export async function getStoredAnalysis(
     detections,
   };
 }
+
+/**
+ * Loads the project's active room image from the backend.
+ * GET /api/projects/{projectId}/image
+ *
+ * Used to restore the analyze page after a refresh, when the in-memory
+ * upload preview is no longer available.
+ */
+export async function getActiveRoomImage(
+  projectId: string,
+  signal?: AbortSignal
+): Promise<RoomImage> {
+  const cleanProjectId = projectId.trim();
+
+  if (!isValidProjectId(cleanProjectId)) {
+    throw new ApiError("Valid project UUID is required to load the room image", 400);
+  }
+
+  const baseUrl = getApiBaseUrl();
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${baseUrl}/api/projects/${encodeURIComponent(cleanProjectId)}/image`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        signal,
+      }
+    );
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw err;
+    }
+    throw new ApiError(
+      `Network error while loading room image: ${err instanceof Error ? err.message : String(err)}`,
+      0
+    );
+  }
+
+  if (!response.ok) {
+    const errorDetails = await parseErrorDetails(response);
+    throw new ApiError(
+      `Failed to load room image: Server returned ${response.status}`,
+      response.status,
+      errorDetails
+    );
+  }
+
+  const data = await parseResponseBody(response);
+
+  if (!data || typeof data !== "object") {
+    throw new ApiError(
+      "Malformed room image response: expected object",
+      response.status,
+      data
+    );
+  }
+
+  const res = data as {
+    imageId?: unknown;
+    projectId?: unknown;
+    imageUrl?: unknown;
+    width?: unknown;
+    height?: unknown;
+  };
+
+  if (String(res.projectId).trim() !== cleanProjectId) {
+    throw new ApiError(
+      "Malformed room image response: projectId mismatch",
+      response.status,
+      data
+    );
+  }
+
+  const isPositiveInteger = (value: unknown): value is number =>
+    typeof value === "number" && Number.isInteger(value) && value > 0;
+
+  if (
+    (typeof res.imageId !== "number" && typeof res.imageId !== "string") ||
+    String(res.imageId).trim() === "" ||
+    typeof res.imageUrl !== "string" ||
+    res.imageUrl.trim() === "" ||
+    !isPositiveInteger(res.width) ||
+    !isPositiveInteger(res.height)
+  ) {
+    throw new ApiError(
+      "Malformed room image response: imageId, imageUrl, width and height are required",
+      response.status,
+      data
+    );
+  }
+
+  return {
+    projectId: cleanProjectId,
+    imageId: String(res.imageId).trim(),
+    imageUrl: res.imageUrl.trim(),
+    width: res.width,
+    height: res.height,
+  };
+}

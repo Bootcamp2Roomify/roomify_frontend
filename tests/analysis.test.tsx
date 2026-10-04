@@ -36,6 +36,7 @@ vi.mock("../src/services/api", async (importOriginal) => {
     ...actual,
     getStoredAnalysis: vi.fn(),
     requestAnalysis: vi.fn(),
+    getActiveRoomImage: vi.fn(),
     createProject: vi.fn(),
     uploadRoomImage: vi.fn(),
   };
@@ -58,6 +59,10 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
     vi.clearAllMocks();
 
     vi.mocked(api.getStoredAnalysis).mockReset();
+    vi.mocked(api.getActiveRoomImage).mockReset();
+    vi.mocked(api.getActiveRoomImage).mockRejectedValue(
+      new Error("Failed to load room image: Server returned 409")
+    );
     vi.mocked(api.createProject).mockReset();
     vi.mocked(api.uploadRoomImage).mockReset();
 
@@ -468,6 +473,42 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
     await act(async () => {
       unmountB?.();
     });
+  });
+
+  it("10. AnalyzePage restores the room image from the backend after a refresh", async () => {
+    // No stored context and no in-memory preview, as after a page refresh.
+    vi.mocked(api.getActiveRoomImage).mockResolvedValueOnce({
+      projectId: "123",
+      imageId: "5678",
+      imageUrl: "http://localhost:8080/api/projects/123/image/content",
+      width: 1024,
+      height: 768,
+    });
+    vi.mocked(api.getStoredAnalysis).mockResolvedValue({
+      projectId: "123",
+      imageId: "5678",
+      detections: [],
+    });
+
+    const params = Promise.resolve({ id: "123" });
+
+    await act(async () => {
+      render(<AnalyzePage params={params} />);
+      await params;
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/analysis complete/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("img", { name: /room preview/i })
+      ).toHaveAttribute(
+        "src",
+        "http://localhost:8080/api/projects/123/image/content"
+      );
+    });
+
+    expect(api.getActiveRoomImage).toHaveBeenCalledWith("123", expect.anything());
+    expect(screen.queryByText(/no active room image found/i)).not.toBeInTheDocument();
   });
 
   // Focused Regression Tests
