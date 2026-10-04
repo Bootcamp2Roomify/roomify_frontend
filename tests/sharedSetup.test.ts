@@ -3,6 +3,7 @@ import {
   createProject,
   uploadRoomImage,
   analyzeRoom,
+  getActiveRoomImage,
   normalizeDetections,
   ApiError,
   ContractBlockedError,
@@ -22,6 +23,72 @@ describe("Shared API & Adapters", () => {
   afterEach(() => {
     global.fetch = originalFetch;
     vi.restoreAllMocks();
+  });
+
+  describe("getActiveRoomImage", () => {
+    const projectId = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+
+    it("returns the image URL and dimensions for the project", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            imageId: 7,
+            projectId,
+            contentType: "image/jpeg",
+            width: 1200,
+            height: 800,
+            imageUrl: `http://localhost:8080/api/projects/${projectId}/image/content`,
+          }),
+      });
+
+      await expect(getActiveRoomImage(projectId)).resolves.toEqual({
+        projectId,
+        imageId: "7",
+        imageUrl: `http://localhost:8080/api/projects/${projectId}/image/content`,
+        width: 1200,
+        height: 800,
+      });
+    });
+
+    it("rejects a response without dimensions", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            imageId: 7,
+            projectId,
+            imageUrl: "http://localhost:8080/x",
+            width: null,
+            height: null,
+          }),
+      });
+
+      await expect(getActiveRoomImage(projectId)).rejects.toThrow(
+        "Malformed room image response"
+      );
+    });
+
+    it("rejects a response for a different project", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            imageId: 7,
+            projectId: "00000000-0000-0000-0000-000000000000",
+            imageUrl: "http://localhost:8080/x",
+            width: 10,
+            height: 10,
+          }),
+      });
+
+      await expect(getActiveRoomImage(projectId)).rejects.toThrow(
+        "projectId mismatch"
+      );
+    });
   });
 
   describe("createProject validation and failure safety", () => {
