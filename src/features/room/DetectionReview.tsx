@@ -318,6 +318,15 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
         </div>
       </div>
 
+      {decisionError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+        >
+          {decisionError}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-neutral-200">
         <button
           type="button"
