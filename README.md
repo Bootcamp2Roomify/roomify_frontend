@@ -266,3 +266,12 @@ Roomify’s frontend must clearly communicate the following limitations:
 ## License
 
 This project is licensed under the MIT License.
+
+
+## Redesign preferences (ROOM-86)
+
+The review flow's Continue action leads to `/rooms/{projectId}`, where the preference form loads saved data and the configured budget maximum from the ROOM-84 API. Save and continue performs an idempotent PUT and presents a review summary before generation. Edit preferences returns to the saved values. Generation itself belongs to the downstream generation feature.
+
+The form validates style, positive budget (up to two decimal places), supported currency/purpose, up to eight colors, and 1000-character requirements. It includes rental-friendly mode, disables inputs/Continue while saving, preserves edits on failure, and displays server validation errors inline.
+
+Requires the backend ROOM-84 change. NEXT_PUBLIC_API_URL remains the backend base URL. Run npm run typecheck, npm test, npm run lint, and npm run build.
