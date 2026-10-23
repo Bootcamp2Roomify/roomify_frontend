@@ -17,7 +17,7 @@ import {
 import { AnalysisPanel } from "../src/features/room/AnalysisPanel";
 import AnalyzePage from "../src/app/projects/[id]/analyze/page";
 import * as api from "../src/services/api";
-import { ProjectContext } from "../src/types/room";
+import { ProjectContext, RoomImage } from "../src/types/room";
 import {
   saveProjectContext,
   clearProjectContext,
@@ -36,6 +36,7 @@ vi.mock("../src/services/api", async (importOriginal) => {
     ...actual,
     getStoredAnalysis: vi.fn(),
     requestAnalysis: vi.fn(),
+    getActiveRoomImage: vi.fn(),
     createProject: vi.fn(),
     uploadRoomImage: vi.fn(),
   };
@@ -58,6 +59,10 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
     vi.clearAllMocks();
 
     vi.mocked(api.getStoredAnalysis).mockReset();
+    vi.mocked(api.getActiveRoomImage).mockReset();
+    vi.mocked(api.getActiveRoomImage).mockRejectedValue(
+      new Error("Failed to load room image: Server returned 409")
+    );
     vi.mocked(api.createProject).mockReset();
     vi.mocked(api.uploadRoomImage).mockReset();
 
@@ -74,6 +79,22 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("runs fresh analysis before reading results when a replacement reuses the image ID", async () => {
+    const events: string[] = [];
+    vi.mocked(api.requestAnalysis).mockImplementationOnce(async () => { events.push("analyze replacement"); });
+    vi.mocked(api.getStoredAnalysis).mockImplementationOnce(async () => {
+      events.push("read new detections");
+      return { projectId: "123", imageId: "5678", detections: [{
+        id: "new-chair", label: "New chair", confidence: .9,
+        box: { x: .1, y: .1, width: .2, height: .2 }, decision: "UNSURE"
+      }] };
+    });
+    render(<AnalysisPanel projectId="123" projectContext={sampleContext} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: /new chair · 90%/i })).toBeInTheDocument());
+    expect(events).toEqual(["analyze replacement", "read new detections"]);
+    expect(api.getStoredAnalysis).toHaveBeenCalledWith("123", "5678", expect.any(AbortSignal));
   });
 
   it("1. delayed promise shows analyzing text/spinner with aria-live status", async () => {
@@ -120,7 +141,7 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
     });
   });
 
-  it("2. auto-load triggers the backend once then loads saved objects while pending", async () => {
+  it("2. auto-load issues exactly one stored-analysis request while pending", async () => {
     let resolveAnalysis: (val: any) => void = () => {};
     const pendingPromise = new Promise((resolve) => {
       resolveAnalysis = resolve;
@@ -468,6 +489,59 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
     await act(async () => {
       unmountB?.();
     });
+  });
+
+  it("10. AnalyzePage restores the room image from the backend after a refresh", async () => {
+    // No stored context and no in-memory preview, as after a page refresh.
+    vi.mocked(api.getActiveRoomImage).mockResolvedValueOnce({
+      projectId: "123",
+      imageId: "5678",
+      imageUrl: "http://localhost:8080/api/projects/123/image/content",
+      width: 1024,
+      height: 768,
+    });
+    vi.mocked(api.getStoredAnalysis).mockResolvedValue({
+      projectId: "123",
+      imageId: "5678",
+      detections: [],
+    });
+
+    const params = Promise.resolve({ id: "123" });
+
+    await act(async () => {
+      render(<AnalyzePage params={params} />);
+      await params;
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/analysis complete/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("img", { name: /room preview/i })
+      ).toHaveAttribute(
+        "src",
+        "http://localhost:8080/api/projects/123/image/content"
+      );
+    });
+
+    expect(api.getActiveRoomImage).toHaveBeenCalledWith("123", expect.anything());
+    expect(screen.queryByText(/no active room image found/i)).not.toBeInTheDocument();
+  });
+
+  it("ignores a late image restore from the previous project", async () => {
+    let resolveOld: (image: RoomImage) => void = () => {};
+    const oldImage = new Promise<RoomImage>(resolve => { resolveOld = resolve; });
+    vi.mocked(api.getActiveRoomImage).mockImplementation(id => id === "123"
+      ? oldImage
+      : Promise.resolve({ projectId: "567", imageId: "2", imageUrl: "/new.png", width: 800, height: 600 }));
+    const paramsA = Promise.resolve({ id: "123" });
+    const paramsB = Promise.resolve({ id: "567" });
+    let rendered: ReturnType<typeof render> | undefined;
+    await act(async () => { rendered = render(<AnalyzePage params={paramsA} />); await paramsA; });
+    await waitFor(() => expect(api.getActiveRoomImage).toHaveBeenCalledWith("123", expect.anything()));
+    await act(async () => { rendered!.rerender(<AnalyzePage params={paramsB} />); await paramsB; });
+    await waitFor(() => expect(screen.getByRole("img", { name: /uploaded room image/i })).toHaveAttribute("src", "/new.png"));
+    await act(async () => resolveOld({ projectId: "123", imageId: "1", imageUrl: "/old.png", width: 800, height: 600 }));
+    expect(screen.getByRole("img", { name: /uploaded room image/i })).toHaveAttribute("src", "/new.png");
   });
 
   // Focused Regression Tests

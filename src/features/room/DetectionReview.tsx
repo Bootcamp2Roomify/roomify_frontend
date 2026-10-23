@@ -3,7 +3,6 @@ import { FurnitureDecision, NormalizedDetection } from "../../types/room";
 import { DetectionOverlay } from "./DetectionOverlay";
 import { DetectionList } from "./DetectionList";
 import { updateFurnitureDecision } from "../../services/api";
-import { saveFurnitureDecision } from "../../services/decisionStorage";
 
 export interface DetectionReviewProps {
   projectId: string;
@@ -287,8 +286,6 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
             : detection
         )
       );
-
-      saveFurnitureDecision(projectId, id, saved.decision);
     } catch {
       if (reviewGenerationRef.current !== reviewGeneration) return;
       setReviewDetections((previous) =>

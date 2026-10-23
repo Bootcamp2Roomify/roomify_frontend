@@ -39,4 +39,27 @@ describe("Project API bridge", () => {
     expect(result.status).toBe(502);
     expect(await result.text()).not.toContain("private stack");
   });
+  it("forwards preference PUT requests with their JSON body", async () => {
+    vi.stubEnv("ROOMIFY_API_URL", "http://localhost:8080");
+    const fetchSpy = vi.fn(async () => Response.json({ saved: true })); vi.stubGlobal("fetch", fetchSpy);
+    const { PUT } = await handlers();
+    expect(PUT).toBeTypeOf("function");
+    const result = await PUT(new Request("http://127.0.0.1:3381/api/projects/room/preferences", { method: "PUT", headers: { "Content-Type": "application/json" }, body: '{"budgetAmount":100}' }));
+    const [url, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("http://localhost:8080/api/projects/room/preferences");
+    expect(init.method).toBe("PUT");
+    expect(new TextDecoder().decode(init.body as ArrayBuffer)).toBe('{"budgetAmount":100}');
+    expect(result.status).toBe(200);
+  });
+  it("forwards image Accept headers and returns original binary bytes", async () => {
+    const bytes = new Uint8Array([137, 80, 78, 71]);
+    const fetchSpy = vi.fn(async () => new Response(bytes, { headers: { "Content-Type": "image/png" } })); vi.stubGlobal("fetch", fetchSpy);
+    const { GET } = await handlers();
+    const result = await GET(new Request("http://localhost:3000/api/projects/room/image/content", { headers: { Accept: "image/png" } }));
+    const [, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];
+    expect(new Headers(init.headers).get("accept")).toBe("image/png");
+    expect(result.headers.get("content-type")).toBe("image/png");
+    expect(new Uint8Array(await result.arrayBuffer())).toEqual(bytes);
+  });
+
 });
