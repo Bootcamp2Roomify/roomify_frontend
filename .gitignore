@@ -58,5 +58,5 @@ temp/
 Thumbs.db
 desktop.ini
 
-# Ignore local dependency directories and worktree symlinks.
+# Local worktree dependency symlinks.
 /node_modules
