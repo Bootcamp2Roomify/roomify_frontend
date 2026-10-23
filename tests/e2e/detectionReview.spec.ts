@@ -57,11 +57,6 @@ test.describe("ROOM-81 DetectionReview Browser E2E Suite (Vite Client Harness)",
       expect(Math.abs(boxRect.width - expectedWidth)).toBeLessThanOrEqual(2);
       expect(Math.abs(boxRect.height - expectedHeight)).toBeLessThanOrEqual(2);
     }
-
-    await page.screenshot({
-      path: "tests/screenshots/detection-review-1440px.png",
-      fullPage: true,
-    });
   });
 
   test("mobile viewport (390px): stacks list below image and matches img rectangle within 2px", async ({
@@ -102,11 +97,6 @@ test.describe("ROOM-81 DetectionReview Browser E2E Suite (Vite Client Harness)",
       expect(Math.abs(boxRect.width - expectedWidth)).toBeLessThanOrEqual(2);
       expect(Math.abs(boxRect.height - expectedHeight)).toBeLessThanOrEqual(2);
     }
-
-    await page.screenshot({
-      path: "tests/screenshots/detection-review-390px.png",
-      fullPage: true,
-    });
   });
 
   test("browser interactions: verifies real hover, clicks, keyboard navigation, and callback tracking", async ({
@@ -236,14 +226,9 @@ test.describe("ROOM-81 DetectionReview Browser E2E Suite (Vite Client Harness)",
       expect(Math.abs(boxRect.width - expectedWidth)).toBeLessThanOrEqual(2);
       expect(Math.abs(boxRect.height - expectedHeight)).toBeLessThanOrEqual(2);
     }
-
-    await page.screenshot({
-      path: "tests/screenshots/detection-review-tall-image.png",
-      fullPage: true,
-    });
   });
 
-  test("zero detections: displays truthful success empty state and captures screenshot", async ({
+  test("zero detections: displays truthful success empty state", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -260,11 +245,6 @@ test.describe("ROOM-81 DetectionReview Browser E2E Suite (Vite Client Harness)",
     // Verify no dead links exist
     const deadLinks = page.locator('a[href="#"], a:not([href])');
     await expect(deadLinks).toHaveCount(0);
-
-    await page.screenshot({
-      path: "tests/screenshots/detection-review-empty.png",
-      fullPage: true,
-    });
   });
 
   test("finding 5 regression: delayed image shows loading indicator, suppresses boxes while pending, and displays aligned boxes upon load", async ({
@@ -299,11 +279,6 @@ test.describe("ROOM-81 DetectionReview Browser E2E Suite (Vite Client Harness)",
       expect(Math.abs(boxRect.x - expectedLeft)).toBeLessThanOrEqual(2);
       expect(Math.abs(boxRect.y - expectedTop)).toBeLessThanOrEqual(2);
     }
-
-    await page.screenshot({
-      path: "tests/screenshots/detection-review-delayed-loaded.png",
-      fullPage: true,
-    });
   });
 
   test("finding 5 regression: failed image URL (404) suppresses boxes and shows readable image recovery action", async ({
@@ -330,11 +305,6 @@ test.describe("ROOM-81 DetectionReview Browser E2E Suite (Vite Client Harness)",
     const newRoomLink = page.getByRole("link", { name: /upload a new image|new room/i });
     await expect(newRoomLink).toBeVisible();
     await expect(newRoomLink).toHaveAttribute("href", "/new-room");
-
-    await page.screenshot({
-      path: "tests/screenshots/detection-review-404-recovery.png",
-      fullPage: true,
-    });
   });
 
   test("finding 5 regression: natural aspect ratio mismatch suppresses boxes and shows recovery action", async ({
@@ -352,11 +322,6 @@ test.describe("ROOM-81 DetectionReview Browser E2E Suite (Vite Client Harness)",
     await expect(
       page.getByRole("alert").getByText("Image dimensions mismatch: aspect ratio mismatch", { exact: true })
     ).toBeVisible();
-
-    await page.screenshot({
-      path: "tests/screenshots/detection-review-aspect-mismatch.png",
-      fullPage: true,
-    });
   });
 
   test("finding 5 regression: dynamic URL changes reset loading state, ignore stale callbacks, and recover cleanly", async ({
@@ -401,10 +366,5 @@ test.describe("ROOM-81 DetectionReview Browser E2E Suite (Vite Client Harness)",
     // Error overlay is cleared, box reappears once loaded
     await expect(errorOverlay).toBeHidden();
     await expect(box).toBeVisible();
-
-    await page.screenshot({
-      path: "tests/screenshots/detection-review-url-change-recovered.png",
-      fullPage: true,
-    });
   });
 });

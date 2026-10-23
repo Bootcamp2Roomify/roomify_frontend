@@ -2,10 +2,11 @@
 
 import React, { use, useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { loadProjectContext } from "@/features/room/projectContext";
+import { loadProjectContext, saveProjectContext } from "@/features/room/projectContext";
 import { AnalysisPanel } from "@/features/room/AnalysisPanel";
 import { RoomStudio } from "@/components/studio/RoomStudio";
-import { ProjectContext } from "@/types/room";
+import { getActiveRoomImage } from "@/services/api";
+import { isRenderReadyImage, ProjectContext } from "@/types/room";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -18,10 +19,39 @@ function AnalyzeContent({ params }: PageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    setContext(null);
+    setIsLoaded(false);
     if (!projectId) return;
     const loadedContext = loadProjectContext(projectId);
-    setContext(loadedContext);
-    setIsLoaded(true);
+
+    if (
+      loadedContext &&
+      isRenderReadyImage(loadedContext.image, loadedContext.previewUrl)
+    ) {
+      setContext(loadedContext);
+      setIsLoaded(true);
+      return;
+    }
+
+    // After a refresh the in-memory upload preview is gone: restore the
+    // active room image from the backend instead.
+    const controller = new AbortController();
+
+    getActiveRoomImage(projectId, controller.signal)
+      .then((image) => {
+        if (controller.signal.aborted) return;
+        const restored: ProjectContext = { projectId, image };
+        saveProjectContext(restored);
+        setContext(restored);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setContext(loadedContext);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoaded(true);
+      });
+
+    return () => controller.abort();
   }, [projectId]);
   const handleContinue = () => {
     router.push(`/rooms/${encodeURIComponent(projectId)}`);

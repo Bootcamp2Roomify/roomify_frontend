@@ -54,7 +54,7 @@
 .studio-analysis-card > div { gap: 40px; }
 .studio-analysis-card > div > div:first-child { min-height: 380px; background: #e9e9df; border-radius: 14px; }
 .studio-analysis-card > div > div:first-child > img { max-height: 620px; }
-.studio-analysis-card h1 { font-size: 30px; font-weight: 400; letter-spacing: -.04em; }
+.studio-analysis-card h2 { font-size: 30px; font-weight: 400; letter-spacing: -.04em; }
 .studio-analysis-card > div > div:last-child { width: 330px; padding: 20px 0; }
 .studio-analysis-card button { min-height: 48px; background: var(--studio-ink); border-radius: 8px; }
 .studio-analysis-card button:hover { background: var(--studio-moss); }
@@ -148,7 +148,7 @@
  .studio-steps li > span { width: 24px; height: 24px; }
  .studio-workspace { padding-top: 24px; }
  .studio-upload { padding-top: 8px; }
- .studio-upload h2, .studio-analysis-card h1 { font-size: 26px; }
+ .studio-upload h2, .studio-analysis-card h2 { font-size: 26px; }
  .studio-dropzone { min-height: 260px; padding: 28px 20px; }
  .studio-analysis-card > div { gap: 20px; }
  .studio-analysis-card > div > div:first-child { min-height: 250px; }

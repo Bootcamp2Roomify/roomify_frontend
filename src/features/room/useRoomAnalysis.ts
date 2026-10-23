@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { AnalysisResult } from "../../types/room";
-import { getStoredAnalysis, requestAnalysis } from "../../services/api";
+import { ApiError, getProjectStatus, getStoredAnalysis, requestAnalysis } from "../../services/api";
 
 export type AnalysisStatus = "ready" | "analyzing" | "succeeded" | "failed";
 
@@ -85,9 +85,18 @@ export function useRoomAnalysis(projectId: string, expectedImageId?: string, ena
 
     try {
       const imageId = expectedImageId?.trim() || undefined;
-      // Replacement uploads can reuse the same image ID while old objects remain.
-      // Let the backend resolve the active project state before reading saved UUIDs.
-      await requestAnalysis(requestedProject, controller.signal);
+      // Ask the backend to analyze the active image before reading its stable
+      // persisted object IDs. Replacement images may reuse an image ID.
+      try {
+        await requestAnalysis(requestedProject, controller.signal);
+      } catch (error) {
+        const details = error instanceof ApiError && error.details && typeof error.details === "object"
+          ? error.details as { code?: unknown }
+          : null;
+        if (!(error instanceof ApiError && error.status === 409 && details?.code === "INVALID_STATE_TRANSITION")) throw error;
+        const projectStatus = await getProjectStatus(requestedProject, controller.signal);
+        if (projectStatus !== "PREFERENCES_READY" && projectStatus !== "DESIGN_READY") throw error;
+      }
       if (controller.signal.aborted || abortControllerRef.current !== controller) return;
       const analysisResult = await getStoredAnalysis(requestedProject, imageId, controller.signal);
 
@@ -136,7 +145,11 @@ export function useRoomAnalysis(projectId: string, expectedImageId?: string, ena
 
   useEffect(() => {
     if (!enabled || !projectId || projectId.trim() === "") return;
-    void executeAnalysis();
+    // Let mounting effects settle before starting a write. Development effect
+    // replay cancels the discarded mount before it reaches the network.
+    let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) void executeAnalysis(); });
+    return () => { cancelled = true; };
   }, [projectId, enabled, executeAnalysis]);
 
   return {

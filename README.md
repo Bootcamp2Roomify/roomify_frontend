@@ -146,7 +146,7 @@ chore: configure environment example
 
 ## Getting Started
 
-The Next.js application will be initialized under Jira task `ROOM-8`.
+The Next.js application is implemented. The workflow below describes the current local setup.
 
 ### Clone the Repository
 
@@ -169,20 +169,24 @@ The frontend environment example contains:
 ROOMIFY_API_URL=http://localhost:8080
 ```
 
-The Next.js server forwards same-origin `/api/projects/...` requests to this backend URL. The legacy `NEXT_PUBLIC_API_URL` setting is also supported as a server destination.
+Next.js forwards project and health requests to this server-only URL. Browser requests stay on `/api/projects/...` and `/api/health`, including preferences and room image content.
 
 Do not place database passwords, JWT secrets, OpenAI or Gemini API keys, AWS access keys, or other private credentials in the frontend environment.
 
 ### Install and Run
 
-```bash
-npm install
+With Node.js and npm installed:
+
+```sh
+npm ci
 npm run dev
 ```
 
-Use `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` to verify changes. The current anonymous upload/analysis/review flow and service limitations are documented in [backend-integration.md](docs/backend-integration.md).
+Open `/` and select **Create room** for the backend workflow. To inspect all three approved UI screens without a backend, open `/ui-preview` and switch between Upload, Analysis and Detections. Direct preview links are `/ui-preview?view=analysis` and `/ui-preview?view=review`; sample results and decisions stay local.
 
-The planned local frontend URL is:
+Check changes with `npm test`, `npm run lint`, `npm run build`, then `npm run typecheck`. Run the build and browser tests sequentially: Next development and production commands share `.next` output.
+
+The default local frontend URL is:
 
 ```text
 http://localhost:3000
@@ -271,3 +275,16 @@ Roomify’s frontend must clearly communicate the following limitations:
 ## License
 
 This project is licensed under the MIT License.
+
+
+## Redesign preferences (ROOM-86)
+
+The review flow's Continue action leads to `/rooms/{projectId}`, where the preference form loads saved data and the configured budget maximum from the ROOM-84 API. Save and continue performs an idempotent PUT and presents a review summary before generation. Edit preferences returns to the saved values. Generation itself belongs to the downstream generation feature.
+
+The form validates style, positive budget (up to two decimal places), supported currency/purpose, up to eight colors, and 1000-character requirements. It includes rental-friendly mode, disables inputs/Continue while saving, preserves edits on failure, and displays server validation errors inline.
+
+Requires the backend ROOM-84 change. Set `ROOMIFY_API_URL` to the Spring Boot base URL. Run `npm run typecheck`, `npm test`, `npm run lint`, and `npm run build`.
+
+The analyze page restores the active image after refresh and requests analysis before loading saved object UUIDs. If analysis is locked because preferences or design are already saved, it confirms that project status before showing stored detections. Replacing an image in an advanced project is a separate backend limitation: the current backend does not reset `PREFERENCES_READY` or `DESIGN_READY` to an image-ready status, so its design and detections can remain stale. The UI starts a fresh project for a new upload.
+
+For a local browser integration check, run `ROOMIFY_API_URL=http://127.0.0.1:41847 PORT=3381 PLAYWRIGHT_BROWSER_CHANNEL=chrome npm run test:e2e -- tests/e2e/backendBridge.spec.ts --project=chromium --workers=1 --reporter=line`. This test starts a local fixture backend and verifies the real Next.js bridge, image restoration, preferences PUT, and offline preview. It does not exercise a live Spring Boot or computer-vision service.

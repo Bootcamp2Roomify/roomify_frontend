@@ -41,7 +41,7 @@ test.describe("ROOM-79 Upload E2E Flow", () => {
     page,
   }) => {
     await page.goto("/new-room");
-    await expect(page.locator("h1")).toContainText("Upload Room Photo");
+    await expect(page.getByRole("heading", { name: "Upload Room Photo" })).toContainText("Upload Room Photo");
     await expect(
       page.getByText("JPG or PNG up to 10MB")
     ).toBeVisible();

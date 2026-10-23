@@ -6,7 +6,7 @@ These screens follow Jira ROOM-69, ROOM-78, ROOM-79, ROOM-80, ROOM-81 and the im
 
 Copy `.env.example` to `.env.local`, set `ROOMIFY_API_URL` to the running Spring Boot service, then run `npm install` and `npm run dev`. The backend URL defaults to `http://localhost:8080`. Open `/` and choose **Create room**. No project is created until a valid photo is submitted.
 
-The browser calls same-origin `/api/projects/...`. The Next.js route forwards those anonymous workflow requests to Spring Boot, preserving multipart bytes, JSON, methods, and HTTP status. Browser Origin headers are not forwarded, so local preview ports do not rely on the backend's localhost:3000 CORS allowlist. `NEXT_PUBLIC_API_URL` remains supported as a legacy server destination. Private credentials belong in the backend, never the browser.
+The browser calls same-origin `/api/projects/...`. The Next.js route forwards those anonymous workflow requests to Spring Boot, preserving multipart bytes, JSON, methods, and HTTP status. Browser Origin headers are not forwarded, so local preview ports do not rely on the backend's localhost:3000 CORS allowlist. Set the server-only `ROOMIFY_API_URL` for the backend destination. Private credentials belong in the backend, never the browser.
 
 ## Implemented contract
 
@@ -24,9 +24,9 @@ The POST analysis response uses internal numeric object IDs. It is followed by G
 
 The broader [project feature document](https://docs.google.com/document/d/1PV9RHEOfqf8el1q9Jvt5fg1NYEHbPP9p0r-uivaCuCM/edit) includes authenticated saved projects, preferences, redesigns, prototypes and recommendations. Those are separate features; this sprint uses anonymous room projects.
 
-The image upload response and GET project response do not provide a readable image URL, and there is no image retrieval endpoint yet. The uploaded photo uses an in-memory blob preview during navigation. A full refresh cannot restore that photo; the screen provides visible upload recovery. Storage keys are never converted into guessed public S3 URLs.
+GET `/api/projects/{id}/image` restores active-image metadata after refresh; image bytes are served through the same-origin `/api/projects/{id}/image/content` bridge. Storage keys are never converted into guessed public S3 URLs. ROOM-86 preferences are available at `/rooms/{id}`.
 
-GET analysis currently omits saved decisions. Decisions are persisted by PATCH and cached locally after successful saves; a different browser cannot restore them until the backend adds them to a read response. The existing `/rooms/{id}` continuation is preserved, but preferences/redesign pages are not implemented here. Repeating analysis on an already analyzed project retrieves cached results; replacing the photo is needed for new inference.
+GET analysis returns persisted furniture decisions. The UI uses those values and ignores stale browser caches; deploy the backend decision-response fix before relying on restoration across browsers. An older backend that omits the field displays UNSURE. Repeating analysis on an already analyzed project retrieves cached results; replacing the photo is needed for new inference. The backend replacement fix resets project state and deactivates the previous detections. Design/recommendation generation remains separate work.
 
 ## Verification
 

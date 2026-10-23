@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { createServer, Server } from "node:http";
 import { AddressInfo } from "node:net";
+import { VALID_PNG_BASE64 } from "../helpers/imageFixtures";
 
 const projectId = "00000000-0000-0000-0000-000000000079";
 const objectId = "00000000-0000-0000-0000-000000000081";
@@ -27,11 +28,16 @@ test.beforeAll(async () => {
       response.writeHead(201); response.end(JSON.stringify({ id: projectId, status: "CREATED" }));
     } else if (method === "POST" && path === `/api/projects/${projectId}/image`) {
       response.end(JSON.stringify({ imageId: 101, projectId, bucket: "room-images", storageKey: `projects/${projectId}/room.png`, originalFilename: "room.png", contentType: "image/png", size: body.length }));
+    } else if (method === "GET" && path === `/api/projects/${projectId}/image`) {
+      response.end(JSON.stringify({ projectId, imageId: 101, imageUrl: `/api/projects/${projectId}/image/content`, width: 1, height: 1 }));
+    } else if (method === "GET" && path === `/api/projects/${projectId}/image/content`) {
+      response.setHeader("Content-Type", "image/png");
+      response.end(Buffer.from(VALID_PNG_BASE64, "base64"));
     } else if (method === "POST" && path === `/api/projects/${projectId}/analysis`) {
       if (failures-- > 0) { response.writeHead(503); response.end('{"message":"private vision failure"}'); }
       else response.end(JSON.stringify({ projectId, status: "ANALYZED", objects: empty ? [] : [{ id: 7, label: "Chair", confidence: .83, bbox: { xMin: .1, yMin: .2, xMax: .4, yMax: .6 }, decision: savedDecision }] }));
     } else if (method === "GET" && path === `/api/projects/${projectId}/analysis`) {
-      response.end(JSON.stringify({ projectId, objects: empty ? [] : [{ objectId, imageId: 101, label: "Chair", confidence: .83, bbox: { x: .1, y: .2, w: .3, h: .4 }, modelVersion: "room-model-v1" }] }));
+      response.end(JSON.stringify({ projectId, objects: empty ? [] : [{ objectId, imageId: 101, label: "Chair", confidence: .83, bbox: { x: .1, y: .2, w: .3, h: .4 }, modelVersion: "room-model-v1", decision: savedDecision }] }));
     } else if (method === "PATCH" && path === `/api/projects/${projectId}/objects/${objectId}`) {
       savedDecision = JSON.parse(body.toString()).decision;
       response.end(JSON.stringify({ objectId, decision: savedDecision }));
@@ -78,8 +84,9 @@ test("home → create → upload → analysis retry → UUID furniture decision 
   expect(records.every(record => record.origin === undefined)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   await page.reload();
-  await expect(page.getByText(/no active room image found/i)).toBeVisible();
-  expect(records).toHaveLength(6);
+  await expect(page.getByTestId("detection-review")).toBeVisible();
+  await expect(page.getByRole("radio", { name: /keep/i })).toBeChecked();
+  expect(records.map(r => `${r.method} ${r.path}`)).toContain(`GET /api/projects/${projectId}/image`);
 });
 
 test("empty saved analysis is a successful room review", async ({ page }) => {

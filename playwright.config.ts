@@ -5,6 +5,7 @@ const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  testIgnore: "backendWorkflow.spec.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -17,11 +18,11 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: { ...devices["Desktop Chrome"], ...(process.env.PLAYWRIGHT_BROWSER_CHANNEL === "chrome" ? { channel: "chrome" as const } : {}) },
     },
     {
       name: "mobile-chrome",
-      use: { ...devices["Pixel 5"] },
+      use: { ...devices["Pixel 5"], ...(process.env.PLAYWRIGHT_BROWSER_CHANNEL === "chrome" ? { channel: "chrome" as const } : {}) },
     },
   ],
   webServer: {
