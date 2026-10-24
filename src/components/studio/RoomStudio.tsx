@@ -45,7 +45,7 @@ export function RoomStudio({ children, step = 0 }: { children: React.ReactNode; 
       <header className="studio-nav">
         <Link href="/" className="studio-brand" aria-label="Roomify home">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M6 26V13a10 10 0 0 1 20 0v13M6 26h8V16h12" stroke="currentColor" strokeWidth="2"/><path d="M14 26h12" stroke="currentColor" strokeWidth="2"/></svg>
-          roomify<span className="studio-brand-dot">.</span>
+          Roomify
         </Link>
         <nav aria-label="Main navigation"><Link href="/dashboard">My rooms</Link><Link href="/new-room">New room</Link><Link className="studio-nav-link" href="/ui-preview">Explore preview <span aria-hidden="true">↗</span></Link><button type="button" onClick={() => void logout()}>Log out</button></nav>
       </header>
@@ -68,7 +68,7 @@ export function RoomStudio({ children, step = 0 }: { children: React.ReactNode; 
           </div>
           <div className="studio-marquee" aria-hidden="true"><div>{Array.from({ length: 2 }, (_, i) => <span key={i}>Warm minimalism <i/> Natural textures <i/> Thoughtful spaces <i/> Room to breathe <i/></span>)}</div></div>
         </section>
-        <footer className="studio-footer"><div><p>Make room for something new.</p><a href="#room-workspace" onClick={skipToWorkspace}>Back to your room <span aria-hidden="true">↗</span></a></div><span>roomify / space to imagine</span></footer>
+        <footer className="studio-footer"><div><p>Make room for something new.</p><a href="#room-workspace" onClick={skipToWorkspace}>Back to your room <span aria-hidden="true">↗</span></a></div><span>Roomify · space to imagine</span></footer>
       </main>
     </div>
   );

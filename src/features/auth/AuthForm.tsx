@@ -55,7 +55,7 @@ export function AuthForm({ mode, next }: { mode: Mode; next: string | null }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-200">
-        <Link href="/" className="text-lg font-semibold tracking-tight text-gray-900">roomify<span className="text-blue-600">.</span></Link>
+        <Link href="/" className="text-lg font-semibold tracking-tight text-gray-900">Roomify</Link>
         <h1 className="mt-6 text-2xl font-semibold text-gray-900">{copy.title}</h1>
         <form className="mt-6 space-y-4" onSubmit={submit} noValidate>
           {mode === "register" && (
