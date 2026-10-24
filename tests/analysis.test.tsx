@@ -17,7 +17,7 @@ import {
 import { AnalysisPanel } from "../src/features/room/AnalysisPanel";
 import AnalyzePage from "../src/app/projects/[id]/analyze/page";
 import * as api from "../src/services/api";
-import { ProjectContext } from "../src/types/room";
+import { ProjectContext, RoomImage } from "../src/types/room";
 import {
   saveProjectContext,
   clearProjectContext,
@@ -79,6 +79,22 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("runs fresh analysis before reading results when a replacement reuses the image ID", async () => {
+    const events: string[] = [];
+    vi.mocked(api.requestAnalysis).mockImplementationOnce(async () => { events.push("analyze replacement"); });
+    vi.mocked(api.getStoredAnalysis).mockImplementationOnce(async () => {
+      events.push("read new detections");
+      return { projectId: "123", imageId: "5678", detections: [{
+        id: "new-chair", label: "New chair", confidence: .9,
+        box: { x: .1, y: .1, width: .2, height: .2 }, decision: "UNSURE"
+      }] };
+    });
+    render(<AnalysisPanel projectId="123" projectContext={sampleContext} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: /new chair · 90%/i })).toBeInTheDocument());
+    expect(events).toEqual(["analyze replacement", "read new detections"]);
+    expect(api.getStoredAnalysis).toHaveBeenCalledWith("123", "5678", expect.any(AbortSignal));
   });
 
   it("1. delayed promise shows analyzing text/spinner with aria-live status", async () => {
@@ -168,7 +184,7 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
     });
 
     expect(api.getStoredAnalysis).toHaveBeenCalledTimes(1);
-    expect(api.requestAnalysis).not.toHaveBeenCalled();
+    expect(api.requestAnalysis).toHaveBeenCalledTimes(1);
   });
 
   it("3. failed analysis shows 'We could not analyze this image. Try again.' and retains image/project", async () => {
@@ -509,6 +525,23 @@ describe("ROOM-80: Room Analysis Hook, Panel, and Page", () => {
 
     expect(api.getActiveRoomImage).toHaveBeenCalledWith("123", expect.anything());
     expect(screen.queryByText(/no active room image found/i)).not.toBeInTheDocument();
+  });
+
+  it("ignores a late image restore from the previous project", async () => {
+    let resolveOld: (image: RoomImage) => void = () => {};
+    const oldImage = new Promise<RoomImage>(resolve => { resolveOld = resolve; });
+    vi.mocked(api.getActiveRoomImage).mockImplementation(id => id === "123"
+      ? oldImage
+      : Promise.resolve({ projectId: "567", imageId: "2", imageUrl: "/new.png", width: 800, height: 600 }));
+    const paramsA = Promise.resolve({ id: "123" });
+    const paramsB = Promise.resolve({ id: "567" });
+    let rendered: ReturnType<typeof render> | undefined;
+    await act(async () => { rendered = render(<AnalyzePage params={paramsA} />); await paramsA; });
+    await waitFor(() => expect(api.getActiveRoomImage).toHaveBeenCalledWith("123", expect.anything()));
+    await act(async () => { rendered!.rerender(<AnalyzePage params={paramsB} />); await paramsB; });
+    await waitFor(() => expect(screen.getByRole("img", { name: /uploaded room image/i })).toHaveAttribute("src", "/new.png"));
+    await act(async () => resolveOld({ projectId: "123", imageId: "1", imageUrl: "/old.png", width: 800, height: 600 }));
+    expect(screen.getByRole("img", { name: /uploaded room image/i })).toHaveAttribute("src", "/new.png");
   });
 
   // Focused Regression Tests

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { AnalysisResult } from "../../types/room";
-import { getStoredAnalysis, requestAnalysis } from "../../services/api";
+import { ApiError, getProjectStatus, getStoredAnalysis, requestAnalysis } from "../../services/api";
 
 export type AnalysisStatus = "ready" | "analyzing" | "succeeded" | "failed";
 
@@ -26,7 +26,7 @@ export interface UseRoomAnalysisReturn {
   retry: () => Promise<void>;
 }
 
-export function useRoomAnalysis(projectId: string, expectedImageId?: string): UseRoomAnalysisReturn {
+export function useRoomAnalysis(projectId: string, expectedImageId?: string, enabled = true): UseRoomAnalysisReturn {
   const [status, setStatus] = useState<AnalysisStatus>("ready");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,11 +56,11 @@ export function useRoomAnalysis(projectId: string, expectedImageId?: string): Us
       }
       inFlightRef.current = false;
     };
-  }, [projectId]);
+  }, [projectId, expectedImageId, enabled]);
 
   const executeAnalysis = useCallback(async () => {
     // Immediate synchronous in-flight guard
-    if (inFlightRef.current) {
+    if (!enabled || inFlightRef.current) {
       return;
     }
 
@@ -80,18 +80,25 @@ export function useRoomAnalysis(projectId: string, expectedImageId?: string): Us
     inFlightRef.current = true;
 
     setStatus("analyzing");
+    setResult(null);
     setError(null);
 
     try {
       const imageId = expectedImageId?.trim() || undefined;
-      let analysisResult = await getStoredAnalysis(requestedProject, imageId, controller.signal);
-
-      // Nothing persisted yet: run analysis on the backend, then reload the
-      // persisted objects so they carry the stable IDs used for decisions.
-      if (analysisResult.detections.length === 0) {
+      // Ask the backend to analyze the active image before reading its stable
+      // persisted object IDs. Replacement images may reuse an image ID.
+      try {
         await requestAnalysis(requestedProject, controller.signal);
-        analysisResult = await getStoredAnalysis(requestedProject, imageId, controller.signal);
+      } catch (error) {
+        const details = error instanceof ApiError && error.details && typeof error.details === "object"
+          ? error.details as { code?: unknown }
+          : null;
+        if (!(error instanceof ApiError && error.status === 409 && details?.code === "INVALID_STATE_TRANSITION")) throw error;
+        const projectStatus = await getProjectStatus(requestedProject, controller.signal);
+        if (projectStatus !== "PREFERENCES_READY" && projectStatus !== "DESIGN_READY") throw error;
       }
+      if (controller.signal.aborted || abortControllerRef.current !== controller) return;
+      const analysisResult = await getStoredAnalysis(requestedProject, imageId, controller.signal);
 
       // Verify controller identity and active project before state mutation
       if (
@@ -126,7 +133,7 @@ export function useRoomAnalysis(projectId: string, expectedImageId?: string): Us
         abortControllerRef.current = null;
       }
     }
-  }, [projectId, expectedImageId]);
+  }, [projectId, expectedImageId, enabled]);
 
   const start = useCallback(() => {
     return executeAnalysis();
@@ -137,9 +144,13 @@ export function useRoomAnalysis(projectId: string, expectedImageId?: string): Us
   }, [executeAnalysis]);
 
   useEffect(() => {
-    if (!projectId || projectId.trim() === "") return;
-    void executeAnalysis();
-  }, [projectId, executeAnalysis]);
+    if (!enabled || !projectId || projectId.trim() === "") return;
+    // Let mounting effects settle before starting a write. Development effect
+    // replay cancels the discarded mount before it reaches the network.
+    let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) void executeAnalysis(); });
+    return () => { cancelled = true; };
+  }, [projectId, enabled, executeAnalysis]);
 
   return {
     status,

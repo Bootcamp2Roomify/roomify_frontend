@@ -7,7 +7,6 @@ import {
 } from "../types/room";
 import { loadProjectContext } from "../features/room/projectContext";
 import { validateRoomFile } from "../utils/fileValidation";
-import { loadFurnitureDecisions } from "./decisionStorage";
 
 export class ApiError extends Error {
   constructor(
@@ -45,6 +44,15 @@ export function isValidUuid(id: string): boolean {
 function isValidProjectId(id: string): boolean {
   return isValidUuid(id);
 }
+function normalizeImageId(value: unknown): string | null {
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) && value > 0 ? String(value) : null;
+  }
+  if (typeof value === "string" && /^[1-9]\d*$/.test(value.trim())) {
+    return value.trim();
+  }
+  return null;
+}
 const FURNITURE_DECISIONS: FurnitureDecision[] = [
   "KEEP",
   "REPLACE",
@@ -71,9 +79,7 @@ function normalizeFurnitureDecision(
   );
 }
 
-const getApiBaseUrl = (): string => {
-  return process.env.NEXT_PUBLIC_API_URL || "";
-};
+const getApiBaseUrl = (): string => "";
 
 /**
  * Reads response body once, parsing as JSON if possible, falling back to raw text.
@@ -148,6 +154,7 @@ export interface RawStoredDetectedObject {
   confidence: number;
   bbox: RawStoredBoundingBox;
   modelVersion?: string | null;
+  decision?: FurnitureDecision;
 }
 
 export interface RawStoredAnalysisResponse {
@@ -496,7 +503,9 @@ export async function uploadRoomImage(
   return {
     projectId: cleanProjectId,
     imageId: imageIdStr,
-    imageUrl: typeof res.imageUrl === "string" ? res.imageUrl : undefined,
+    imageUrl: typeof res.imageUrl === "string"
+      ? `/api/projects/${encodeURIComponent(cleanProjectId)}/image/content`
+      : undefined,
     width: typeof res.width === "number" && res.width > 0 ? res.width : undefined,
     height: typeof res.height === "number" && res.height > 0 ? res.height : undefined,
   };
@@ -751,6 +760,20 @@ export async function requestAnalysis(
   }
 }
 
+export async function getProjectStatus(projectId: string, signal?: AbortSignal): Promise<string> {
+  const cleanProjectId = projectId.trim();
+  if (!isValidProjectId(cleanProjectId)) throw new ApiError("Valid project UUID is required", 400);
+  const response = await fetch(`/api/projects/${encodeURIComponent(cleanProjectId)}`, {
+    headers: { Accept: "application/json" }, signal, cache: "no-store",
+  });
+  if (!response.ok) throw new ApiError("Could not load project status", response.status, await parseErrorDetails(response));
+  const data = await parseResponseBody(response) as { id?: unknown; status?: unknown };
+  if (!data || data.id !== cleanProjectId || typeof data.status !== "string") {
+    throw new ApiError("Malformed project status response", response.status, data);
+  }
+  return data.status;
+}
+
 export async function updateFurnitureDecision(
   projectId: string,
   objectId: string,
@@ -929,7 +952,6 @@ export async function getStoredAnalysis(
   }
 
   const imageIds = new Set<string>();
-  const savedDecisions = loadFurnitureDecisions(cleanProjectId);
   const detections: NormalizedDetection[] = result.objects.map(
     (object, index) => {
       if (
@@ -943,7 +965,7 @@ export async function getStoredAnalysis(
         );
       }
 
-      const imageId = String(object.imageId).trim();
+      const imageId = normalizeImageId(object.imageId);
 
       if (!imageId) {
         throw new ApiError(
@@ -1005,6 +1027,13 @@ export async function getStoredAnalysis(
         );
       }
 
+      if (object.decision !== undefined && !FURNITURE_DECISIONS.includes(object.decision)) {
+        throw new ContractBlockedError(
+          "Invalid furniture decision in stored analysis.",
+          "INVALID_FURNITURE_DECISION"
+        );
+      }
+
       return {
         id: object.objectId.trim(),
         label: object.label.trim(),
@@ -1015,7 +1044,7 @@ export async function getStoredAnalysis(
           width: box.w,
           height: box.h,
         },
-        decision: savedDecisions[object.objectId.trim()] ?? "UNSURE",
+        decision: object.decision ?? "UNSURE",
       };
     }
   );
@@ -1129,8 +1158,7 @@ export async function getActiveRoomImage(
     typeof value === "number" && Number.isInteger(value) && value > 0;
 
   if (
-    (typeof res.imageId !== "number" && typeof res.imageId !== "string") ||
-    String(res.imageId).trim() === "" ||
+    !normalizeImageId(res.imageId) ||
     typeof res.imageUrl !== "string" ||
     res.imageUrl.trim() === "" ||
     !isPositiveInteger(res.width) ||
@@ -1145,8 +1173,8 @@ export async function getActiveRoomImage(
 
   return {
     projectId: cleanProjectId,
-    imageId: String(res.imageId).trim(),
-    imageUrl: res.imageUrl.trim(),
+    imageId: normalizeImageId(res.imageId)!,
+    imageUrl: `/api/projects/${encodeURIComponent(cleanProjectId)}/image/content`,
     width: res.width,
     height: res.height,
   };

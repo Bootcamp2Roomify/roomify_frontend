@@ -57,3 +57,6 @@ temp/
 # Windows
 Thumbs.db
 desktop.ini
+
+# Local worktree dependency symlinks.
+/node_modules

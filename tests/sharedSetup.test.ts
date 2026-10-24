@@ -46,7 +46,7 @@ describe("Shared API & Adapters", () => {
       await expect(getActiveRoomImage(projectId)).resolves.toEqual({
         projectId,
         imageId: "7",
-        imageUrl: `http://localhost:8080/api/projects/${projectId}/image/content`,
+        imageUrl: `/api/projects/${projectId}/image/content`,
         width: 1200,
         height: 800,
       });

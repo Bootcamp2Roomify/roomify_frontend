@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
-import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { DetectionReview } from "../src/features/room/DetectionReview";
 import { NormalizedDetection } from "../src/types/room";
 import * as api from "../src/services/api";
@@ -515,6 +515,19 @@ describe("DetectionReview Component (ROOM-81)", () => {
     });
   });
 
+  it("saves UNSURE after reopening a persisted KEEP without changing old browser data", async () => {
+    const cacheKey = `roomify:furniture-decisions:v1:${defaultProps.projectId}`;
+    window.localStorage.setItem(cacheKey, JSON.stringify({ "chair-1": "REMOVE" }));
+    vi.mocked(api.updateFurnitureDecision).mockResolvedValueOnce({ objectId: "chair-1", decision: "UNSURE" });
+    render(<DetectionReview {...defaultProps} detections={[{ ...defaultDetection, decision: "KEEP" }]} />);
+    expect(screen.getByRole("radio", { name: /keep/i })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: /unsure/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled());
+    expect(api.updateFurnitureDecision).toHaveBeenCalledWith(defaultProps.projectId, "chair-1", "UNSURE");
+    expect(screen.getByRole("radio", { name: /unsure/i })).toBeChecked();
+    expect(window.localStorage.getItem(cacheKey)).toBe(JSON.stringify({ "chair-1": "REMOVE" }));
+  });
+
   it("shows an error and restores the previous decision when saving fails", async () => {
     vi.mocked(api.updateFurnitureDecision).mockRejectedValueOnce(
       new Error("500 Internal Server Error")
@@ -529,6 +542,23 @@ describe("DetectionReview Component (ROOM-81)", () => {
         "Could not save the furniture decision. Your previous choice was restored."
       );
     });
+    expect(screen.getByRole("radio", { name: /unsure/i })).toBeChecked();
+  });
+
+  it("keeps preview decisions local without writing to the backend", async () => {
+    render(<DetectionReview {...defaultProps} previewOnly />);
+    fireEvent.click(screen.getByRole("radio", { name: /keep/i }));
+    expect(screen.getByRole("radio", { name: /keep/i })).toBeChecked();
+    expect(api.updateFurnitureDecision).not.toHaveBeenCalled();
+  });
+
+  it("ignores a decision response from the previous project", async () => {
+    let resolveSave: (value: { objectId: string; decision: "KEEP" }) => void = () => {};
+    vi.mocked(api.updateFurnitureDecision).mockImplementationOnce(() => new Promise(resolve => { resolveSave = resolve; }));
+    const { rerender } = render(<DetectionReview {...defaultProps} />);
+    fireEvent.click(screen.getByRole("radio", { name: /keep/i }));
+    rerender(<DetectionReview {...defaultProps} projectId="00000000-0000-0000-0000-000000000099" />);
+    await act(async () => resolveSave({ objectId: "chair-1", decision: "KEEP" }));
     expect(screen.getByRole("radio", { name: /unsure/i })).toBeChecked();
   });
 });

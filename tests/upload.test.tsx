@@ -208,6 +208,23 @@ describe("ROOM-79 Upload Flow", () => {
   });
 
   describe("Component Integration Tests", () => {
+    it("keeps a selected local preview out of project creation and upload", async () => {
+      render(<RoomUpload previewOnly />);
+      const file = createRealJpegFile("living-room.jpg");
+      fireEvent.change(screen.getByLabelText(/select room photo file/i), {
+        target: { files: [file] },
+      });
+
+      const submitButton = await screen.findByTestId("submit-upload-btn");
+      fireEvent.click(submitButton);
+
+      expect(await screen.findByRole("status")).toHaveTextContent(/nothing was uploaded/i);
+      expect(createProject).not.toHaveBeenCalled();
+      expect(uploadRoomImage).not.toHaveBeenCalled();
+      expect(saveProjectContext).not.toHaveBeenCalled();
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
     it("shows preview for a 5 MB JPEG and a 5 MB PNG", async () => {
       const { unmount } = render(<RoomUpload />);
 

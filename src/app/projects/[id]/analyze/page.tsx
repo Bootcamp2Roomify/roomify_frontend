@@ -4,6 +4,7 @@ import React, { use, useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { loadProjectContext, saveProjectContext } from "@/features/room/projectContext";
 import { AnalysisPanel } from "@/features/room/AnalysisPanel";
+import { RoomStudio } from "@/components/studio/RoomStudio";
 import { getActiveRoomImage } from "@/services/api";
 import { isRenderReadyImage, ProjectContext } from "@/types/room";
 
@@ -18,6 +19,8 @@ function AnalyzeContent({ params }: PageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    setContext(null);
+    setIsLoaded(false);
     if (!projectId) return;
     const loadedContext = loadProjectContext(projectId);
 
@@ -36,6 +39,7 @@ function AnalyzeContent({ params }: PageProps) {
 
     getActiveRoomImage(projectId, controller.signal)
       .then((image) => {
+        if (controller.signal.aborted) return;
         const restored: ProjectContext = { projectId, image };
         saveProjectContext(restored);
         setContext(restored);
@@ -55,7 +59,7 @@ function AnalyzeContent({ params }: PageProps) {
 
   if (!isLoaded) {
     return (
-      <main className="min-h-screen p-6 max-w-4xl mx-auto">
+      <RoomStudio step={1}>
         <div
           role="status"
           aria-live="polite"
@@ -63,18 +67,18 @@ function AnalyzeContent({ params }: PageProps) {
         >
           Loading project...
         </div>
-      </main>
+      </RoomStudio>
     );
   }
 
   return (
-    <main className="min-h-screen p-6 max-w-4xl mx-auto">
+    <RoomStudio step={1}>
       <AnalysisPanel
         projectId={projectId}
         projectContext={context}
         onContinue={handleContinue}
       />
-    </main>
+    </RoomStudio>
   );
 }
 
@@ -82,7 +86,7 @@ export default function AnalyzePage({ params }: PageProps) {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen p-6 max-w-4xl mx-auto">
+        <RoomStudio step={1}>
           <div
             role="status"
             aria-live="polite"
@@ -90,7 +94,7 @@ export default function AnalyzePage({ params }: PageProps) {
           >
             Loading project...
           </div>
-        </main>
+        </RoomStudio>
       }
     >
       <AnalyzeContent params={params} />

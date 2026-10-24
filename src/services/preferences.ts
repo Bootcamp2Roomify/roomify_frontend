@@ -3,7 +3,7 @@ import { Preferences, SavedPreferences, STYLES, PURPOSES } from "../features/pre
 
 function endpoint(projectId: string): string {
   if (!isValidUuid(projectId)) throw new ApiError("Project ID must be a valid UUID.", 400);
-  return `${process.env.NEXT_PUBLIC_API_URL || ""}/api/projects/${encodeURIComponent(projectId)}/preferences`;
+  return `/api/projects/${encodeURIComponent(projectId)}/preferences`;
 }
 async function check(response: Response) {
   if (response.ok) return;
