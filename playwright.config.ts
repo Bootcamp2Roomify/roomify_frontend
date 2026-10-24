@@ -24,11 +24,15 @@ export default defineConfig({
     },
     {
       name: "mobile-chrome",
+      // Fixed-port fake servers can only serve one project at a time; these specs set their own viewports.
+      testIgnore: ["backendWorkflow.spec.ts", "backendBridge.spec.ts", "detectionReview.spec.ts"],
       use: { ...devices["Pixel 5"], ...(process.env.PLAYWRIGHT_BROWSER_CHANNEL === "chrome" ? { channel: "chrome" as const } : {}) },
     },
   ],
   webServer: {
     command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
+    // backendBridge.spec.ts serves its fake Spring API here; other specs stub requests in the browser.
+    env: { ROOMIFY_API_URL: "http://127.0.0.1:41847" },
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120 * 1000,

@@ -5,6 +5,8 @@ const HARNESS_PORT = 3181;
 const BASE_URL = `http://127.0.0.1:${HARNESS_PORT}`;
 
 test.describe("ROOM-81 DetectionReview Browser E2E Suite (Vite Client Harness)", () => {
+  // The harness runs on one fixed port; parallel workers would stop it under each other.
+  test.describe.configure({ mode: "default" });
   let serverStartedLocally = false;
 
   test.beforeAll(async () => {

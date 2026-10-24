@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { createServer, Server } from "node:http";
 import { AddressInfo } from "node:net";
 import { VALID_PNG_BASE64 } from "../helpers/imageFixtures";
+import { fillProjectDetails } from "./projectDetails";
 
 const projectId = "00000000-0000-0000-0000-000000000079";
 const objectId = "00000000-0000-0000-0000-000000000081";
@@ -62,6 +63,7 @@ test("home → create → upload → analysis retry → UUID furniture decision 
   await page.goto("/");
   await page.getByRole("link", { name: /create room/i }).click();
   await expect(page).toHaveURL(/\/new-room$/);
+  await fillProjectDetails(page);
   await chooseRoomImage(page);
   await page.getByRole("button", { name: /analyze room/i }).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/analyze$`));
@@ -91,7 +93,7 @@ test("home → create → upload → analysis retry → UUID furniture decision 
 
 test("empty saved analysis is a successful room review", async ({ page }) => {
   empty = true; failures = 0;
-  await page.goto("/new-room"); await chooseRoomImage(page);
+  await page.goto("/new-room"); await fillProjectDetails(page); await chooseRoomImage(page);
   await page.getByRole("button", { name: /analyze room/i }).click();
   await expect(page.getByText(/0 objects detected/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /^continue$/i })).toBeEnabled();

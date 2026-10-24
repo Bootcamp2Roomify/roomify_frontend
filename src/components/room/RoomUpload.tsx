@@ -17,7 +17,7 @@ import {
 import { createProject, uploadRoomImage } from "../../services/api";
 import { saveProjectContext } from "../../features/room/projectContext";
 import { RoomImagePreview } from "./RoomImagePreview";
-import { RoomImage } from "../../types/room";
+import { ProjectDetails, RoomImage } from "../../types/room";
 
 function isUrlApiSupported(): boolean {
   if (typeof window !== "undefined") {
@@ -59,7 +59,15 @@ function safeRevokeUrl(url?: string | null): void {
   }
 }
 
-export function RoomUpload({ previewOnly = false }: { previewOnly?: boolean } = {}) {
+export interface RoomUploadProps {
+  previewOnly?: boolean;
+  /** Details for a new project; created on first upload. */
+  details?: ProjectDetails;
+  /** Upload into a project that already exists (e.g. resumed from the dashboard). */
+  existingProjectId?: string;
+}
+
+export function RoomUpload({ previewOnly = false, details, existingProjectId }: RoomUploadProps = {}) {
   const router = useRouter();
   const [previewNotice, setPreviewNotice] = useState(false);
 
@@ -68,7 +76,7 @@ export function RoomUpload({ previewOnly = false }: { previewOnly?: boolean } = 
   const [dimensions, setDimensions] = useState<ImageDimensions | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retainedProjectId, setRetainedProjectId] = useState<string | null>(
-    null
+    existingProjectId ?? null
   );
   const [uploadFailed, setUploadFailed] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -233,7 +241,8 @@ export function RoomUpload({ previewOnly = false }: { previewOnly?: boolean } = 
         setErrorMessage(null);
         setUploadFailed(false);
         setNavigationFailed(false);
-        setRetainedProjectId(null);
+        // A resumed project keeps its id; only brand-new projects are recreated on reselection.
+        setRetainedProjectId(existingProjectId ?? null);
         setSelectedFile(file);
         setPreviewUrl(newPreviewUrl);
         setDimensions(decodedDims);
@@ -249,7 +258,7 @@ export function RoomUpload({ previewOnly = false }: { previewOnly?: boolean } = 
         }
       }
     },
-    []
+    [existingProjectId]
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -358,7 +367,7 @@ export function RoomUpload({ previewOnly = false }: { previewOnly?: boolean } = 
       // Step 1: Create project (only if not retained from prior upload failure)
       if (!projectId) {
         try {
-          const project = await createProject(controller.signal);
+          const project = await createProject(details, controller.signal);
           if (
             !isMountedRef.current ||
             selectionTokenRef.current !== currentToken

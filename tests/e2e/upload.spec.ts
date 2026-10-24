@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { fillProjectDetails } from "./projectDetails";
 
 test.describe("ROOM-79 Upload E2E Flow", () => {
   const mockProjectId = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
@@ -40,7 +41,7 @@ test.describe("ROOM-79 Upload E2E Flow", () => {
   test("renders new room upload page with accessible dropzone", async ({
     page,
   }) => {
-    await page.goto("/new-room");
+    await page.goto("/new-room"); await fillProjectDetails(page);
     await expect(page.getByRole("heading", { name: "Upload Room Photo" })).toContainText("Upload Room Photo");
     await expect(
       page.getByText("JPG or PNG up to 10MB")
@@ -53,7 +54,7 @@ test.describe("ROOM-79 Upload E2E Flow", () => {
   });
 
   test("shows validation error on invalid file type", async ({ page }) => {
-    await page.goto("/new-room");
+    await page.goto("/new-room"); await fillProjectDetails(page);
 
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles({
@@ -72,7 +73,7 @@ test.describe("ROOM-79 Upload E2E Flow", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/new-room");
+    await page.goto("/new-room"); await fillProjectDetails(page);
 
     // 1x1 transparent PNG buffer
     const pngBuffer = Buffer.from(
@@ -108,7 +109,7 @@ test.describe("ROOM-79 Upload E2E Flow", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/new-room");
+    await page.goto("/new-room"); await fillProjectDetails(page);
 
     const pngBuffer = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
@@ -155,7 +156,7 @@ test.describe("ROOM-79 Upload E2E Flow", () => {
       });
     });
 
-    await page.goto("/new-room");
+    await page.goto("/new-room"); await fillProjectDetails(page);
 
     // Real GIF89a 1x1 image buffer
     const gifBuffer = Buffer.from(
@@ -226,7 +227,7 @@ test.describe("ROOM-79 Upload E2E Flow", () => {
       });
     });
 
-    await page.goto("/new-room");
+    await page.goto("/new-room"); await fillProjectDetails(page);
 
     const pngBuffer = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
@@ -285,7 +286,7 @@ test.describe("ROOM-79 Upload E2E Flow", () => {
       });
     });
 
-    await page.goto("/new-room");
+    await page.goto("/new-room"); await fillProjectDetails(page);
 
     const pngBuffer = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",

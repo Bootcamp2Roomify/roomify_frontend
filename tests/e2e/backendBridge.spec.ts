@@ -9,6 +9,9 @@ const requests: string[] = [];
 let savedPreferences: Record<string, unknown> | null = null;
 let server: Server;
 
+// One fixed-port fake backend is shared by every test in this file.
+test.describe.configure({ mode: "default" });
+
 test.beforeAll(async () => {
   server = createServer(async (request, response) => {
     const path = request.url || "";
