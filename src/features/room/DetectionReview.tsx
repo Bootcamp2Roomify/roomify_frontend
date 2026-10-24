@@ -184,7 +184,7 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
   // 2. Useful success empty state when zero detections are found
   if (detections.length === 0) {
     return (
-      <div className="w-full flex flex-col gap-6">
+      <div className="studio-detections w-full flex flex-col gap-6">
         <DetectionOverlay
           imageUrl={imageUrl}
           imageWidth={imageWidth}
@@ -307,9 +307,9 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
     }
   };
   return (
-    <div className="w-full flex flex-col gap-6" data-testid="detection-review">
+    <div className="studio-detections w-full flex flex-col gap-6" data-testid="detection-review">
       {/* Mobile: list below image. Desktop: list beside image. */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="studio-review-grid grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2 w-full flex flex-col gap-3">
           <DetectionOverlay
             imageUrl={imageUrl}
@@ -322,7 +322,7 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
             onHover={handleHover}
           />
         </div>
-        <div className="lg:col-span-1 w-full bg-neutral-50/70 p-4 rounded-xl border border-neutral-200">
+        <div className="studio-object-panel lg:col-span-1 w-full bg-neutral-50/70 p-4 rounded-xl border border-neutral-200">
           <DetectionList
             detections={reviewDetections}
             selectedId={selectedId}
