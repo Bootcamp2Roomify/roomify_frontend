@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { isRenderReadyImage, ProjectContext } from "../../types/room";
+import { isRenderReadyImage, NormalizedDetection, ProjectContext } from "../../types/room";
+
+// Stable identity so DetectionReview does not reset while the person adds items by hand.
+const NO_DETECTIONS: NormalizedDetection[] = [];
 import { useRoomAnalysis, UseRoomAnalysisReturn } from "./useRoomAnalysis";
 import { DetectionReview } from "./DetectionReview";
 import { useImageLoadState } from "./useImageLoadState";
@@ -34,6 +37,9 @@ export function AnalysisPanel({
   const internalAnalysis = useRoomAnalysis(projectId, projectContext?.image?.imageId, isContextValid && !injectedAnalysis && !previewOnly);
   const analysis = injectedAnalysis || internalAnalysis;
   const { status, result, error, isAnalyzing, start, retry } = analysis;
+  // MVP Feature 3: when analysis fails the person can continue by listing furniture themselves.
+  const [manualReview, setManualReview] = useState(false);
+  useEffect(() => { setManualReview(false); }, [projectId, status]);
 
   // Safely derive image inputs for unconditional hook invocation before recovery return
   const context = isContextValid ? projectContext : null;
@@ -79,6 +85,27 @@ export function AnalysisPanel({
   // Validate context identity and render-readiness (positive dimensions & usable image/preview URL)
   if (!context) {
     return renderRecovery();
+  }
+
+  if (status === "failed" && manualReview) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900">List your furniture</h2>
+          <p className="text-sm text-gray-500">Automatic analysis did not work for this photo. Add the main pieces yourself, then continue.</p>
+        </div>
+        <DetectionReview
+          projectId={projectId}
+          previewOnly={previewOnly}
+          imageUrl={imageUrl}
+          imageWidth={context.image.width!}
+          imageHeight={context.image.height!}
+          detections={NO_DETECTIONS}
+          onRetry={retry}
+          onContinue={onContinue}
+        />
+      </div>
+    );
   }
 
   // Success view: mount DetectionReview with matching project/image identity
@@ -314,6 +341,24 @@ export function AnalysisPanel({
                 >
                   Retry analysis
                 </button>
+              )}
+
+              {status === "failed" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setManualReview(true)}
+                    className="w-full rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+                  >
+                    Add items manually
+                  </button>
+                  <Link
+                    href={`/projects/${encodeURIComponent(projectId)}/upload`}
+                    className="text-center text-sm font-medium text-indigo-700 underline"
+                  >
+                    Upload a different photo
+                  </Link>
+                </>
               )}
 
               {status === "succeeded" && (

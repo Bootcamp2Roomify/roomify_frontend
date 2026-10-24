@@ -817,7 +817,7 @@ describe("Shared API & Adapters", () => {
 
       const result = normalizeDetections(raw, { width: 640, height: 480 }, "pixel");
       expect(result).toHaveLength(1);
-      const box = result[0].box;
+      const box = result[0].box!;
       expect(box.x).toBe(0.0078125);
       expect(box.width).toBe(0.9921875);
       expect(box.y).toBe(0);
@@ -1010,7 +1010,7 @@ describe("Shared API & Adapters", () => {
 
       const result = await analyzeRoom("proj-123");
       expect(result.detections).toHaveLength(1);
-      const box = result.detections[0].box;
+      const box = result.detections[0].box!;
       expect(box.x).toBe(0.0078125);
       expect(box.width).toBe(0.9921875);
       expect(box.y).toBe(0);

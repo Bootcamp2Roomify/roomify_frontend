@@ -72,7 +72,7 @@ test("home → create → upload → analysis retry → UUID furniture decision 
   await expect(page.getByText(/analysis complete/i)).toBeVisible();
   await expect(page.getByTestId(`detection-box-${objectId}`)).toBeVisible();
   await page.getByRole("button", { name: /inspect chair · 83%/i }).click();
-  await page.getByText("Keep", { exact: true }).click();
+  await page.getByRole("group", { name: /decision for chair/i }).getByText("Keep", { exact: true }).click();
   await expect.poll(() => savedDecision).toBe("KEEP");
   await expect(page.getByRole("radio", { name: /keep/i })).toBeChecked();
   expect(records.map(r => `${r.method} ${r.path}`)).toEqual([
