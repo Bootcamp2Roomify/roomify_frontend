@@ -161,7 +161,7 @@ export function AnalysisPanel({
   // Default view for ready / analyzing / failed states: preserves original image and shows status & actions
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="studio-analysis-card rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-6 md:flex-row">
           {/* Preserved uploaded room image container */}
           <div className="relative flex-1 overflow-hidden rounded-lg bg-gray-100 min-h-[320px] flex items-center justify-center">
