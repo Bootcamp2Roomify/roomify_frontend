@@ -92,15 +92,16 @@ describe("project proxy authentication", () => {
 
 describe("middleware", () => {
   it("redirects signed-out visitors to login with a return path", () => {
-    const response = middleware(new NextRequest("http://localhost:3000/projects/abc/analyze?step=2"));
+    const response = middleware(new NextRequest("http://localhost:3000/projects/abc/analyze?step=2", { headers: { host: "127.0.0.1:3000" } }));
     expect(response.status).toBe(307);
     const location = new URL(response.headers.get("location")!);
+    expect(location.host).toBe("127.0.0.1:3000");
     expect(location.pathname).toBe("/login");
     expect(location.searchParams.get("next")).toBe("/projects/abc/analyze?step=2");
   });
   it("lets signed-in users through and away from the login page", () => {
     const headers = { cookie: `${SESSION_COOKIE}=tok` };
     expect(middleware(new NextRequest("http://localhost:3000/dashboard", { headers })).headers.get("location")).toBeNull();
-    expect(new URL(middleware(new NextRequest("http://localhost:3000/login", { headers })).headers.get("location")!).pathname).toBe("/dashboard");
+    expect(middleware(new NextRequest("http://localhost:3000/login", { headers })).headers.get("location")).toBe("http://localhost:3000/dashboard");
   });
 });

@@ -11,14 +11,20 @@ export function middleware(request: NextRequest) {
   const isAuthPage = pathname === "/login" || pathname === "/register";
 
   if (!signedIn && !isAuthPage) {
-    const login = new URL("/login", request.url);
-    login.searchParams.set("next", `${pathname}${search}`);
-    return NextResponse.redirect(login);
+    return redirect(request, `/login?next=${encodeURIComponent(`${pathname}${search}`)}`);
   }
   if (signedIn && isAuthPage) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return redirect(request, "/dashboard");
   }
   return NextResponse.next();
+}
+
+// Keep the browser on the host it used (the session cookie is scoped to it). NextResponse.redirect
+// would normalize 127.0.0.1 to localhost, so the Location header is set directly.
+function redirect(request: NextRequest, path: string) {
+  const host = request.headers.get("host") ?? request.nextUrl.host;
+  const protocol = request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "");
+  return new NextResponse(null, { status: 307, headers: { location: `${protocol}://${host}${path}` } });
 }
 
 export const config = {
