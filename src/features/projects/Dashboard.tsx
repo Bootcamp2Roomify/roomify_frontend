@@ -44,7 +44,7 @@ export function Dashboard() {
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link href="/" className="text-lg font-semibold tracking-tight text-gray-900">roomify<span className="text-blue-600">.</span></Link>
+          <Link href="/" className="text-lg font-semibold tracking-tight text-gray-900">Roomify</Link>
           <h1 className="mt-4 text-3xl font-semibold text-gray-900">My rooms</h1>
           <p className="mt-1 text-gray-600">Every project is saved automatically. Open one to continue where you left off.</p>
         </div>
