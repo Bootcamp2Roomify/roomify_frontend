@@ -129,6 +129,40 @@ describe("Design workspace (MVP Features 6-10)", () => {
   });
 });
 
+describe("Without an OpenAI key (503 AI_CONFIGURATION_ERROR)", () => {
+  const notConfigured = () => json({ code: "AI_CONFIGURATION_ERROR", message: "Design could not be completed. Please retry.", designId: 7 }, 503);
+
+  it("explains the missing key for the plan and keeps the page usable", async () => {
+    routes({ [`GET ${base}`]: () => json(project), [`GET ${base}/preferences`]: () => json(preferences()),
+      [`GET ${base}/designs/latest`]: () => json(design({ status: "FAILED", plan: null, errorCode: "AI_CONFIGURATION_ERROR" })),
+      [`GET ${base}/recommendations`]: () => json({}, 404), [`POST ${base}/designs`]: notConfigured });
+    render(<DesignWorkspace projectId={projectId} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("no valid OpenAI key");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("Please retry.");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+    expect(screen.getByRole("link", { name: "Edit furniture" })).toBeInTheDocument();
+  });
+
+  it("explains the missing key for the concept, suggestions and DIY", async () => {
+    routes({ [`GET ${base}`]: () => json(project), [`GET ${base}/preferences`]: () => json(preferences()),
+      [`GET ${base}/designs/latest`]: () => json(design()), [`GET ${base}/recommendations`]: () => json(set()),
+      [`POST ${base}/designs/7/prototype`]: notConfigured, [`POST ${base}/recommendations`]: notConfigured,
+      [`GET ${base}/recommendations/i1/diy`]: () => json({}, 404), [`POST ${base}/recommendations/i1/diy`]: notConfigured });
+    render(<DesignWorkspace projectId={projectId} />);
+    fireEvent.click(await screen.findByRole("button", { name: "See it in my room" }));
+    expect(await within(screen.getByRole("region", { name: /Visual concept/ })).findByRole("alert")).toHaveTextContent("no valid OpenAI key");
+    fireEvent.click(screen.getByRole("button", { name: "Refresh suggestions" }));
+    expect(await within(screen.getByRole("region", { name: /Shopping/ })).findByText(/no valid OpenAI key/)).toBeInTheDocument();
+    const lamp = screen.getByRole("heading", { name: "Desk lamp" }).closest("li")!;
+    fireEvent.click(within(lamp).getByRole("button", { name: "DIY instead" }));
+    expect(await within(lamp).findByRole("alert")).toHaveTextContent("no valid OpenAI key");
+    // Saved results stay on screen.
+    expect(screen.getByText("A calm study bedroom")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Rug" })).toBeInTheDocument();
+  });
+});
+
 describe("Preferences hand-off", () => {
   it("starts rental-friendly when asked and links to the redesign after saving", async () => {
     routes({ [`GET ${base}/preferences`]: () => empty(204), [`GET ${base}/preferences/limits`]: () => json({ maxBudgetAmount: 10000 }),
