@@ -5,6 +5,13 @@ what to keep, replace or remove, set a style and budget, and get a redesign plan
 your own room, shopping suggestions with cheaper alternatives and beginner DIY guides — all saved to
 your account. *Redesign more, buy less.*
 
+> **Release status: v0.9.0-rc1 — AI features unverified.** Account, project, upload, detection,
+> review and preference flows are tested end to end against the real stack. The AI features (redesign
+> plan, visual concept, shopping suggestions, DIY guides) are implemented and unit/integration-tested
+> with fake providers, but have **not yet been run against the live OpenAI API**. Without a key they
+> show a clear "AI generation is not configured" message.
+
+
 Services: [roomify_backend](https://github.com/Bootcamp2Roomify/roomify_backend) (Spring Boot API) ·
 [roomify_cv](https://github.com/Bootcamp2Roomify/roomify_cv) (furniture detection).
 
