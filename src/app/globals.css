@@ -16,7 +16,7 @@
 .studio-brand { display: flex; align-items: center; gap: 12px; font-size: 28px; font-weight: 600; letter-spacing: -1.3px; }
 .studio-brand-dot { color: var(--studio-accent); margin-left: -12px; }
 .studio-nav nav { display: flex; gap: 32px; align-items: center; font-size: 13px; }
-.studio-nav nav a { padding: 14px 0; }
+.studio-nav nav a, .studio-nav nav button { padding: 14px 0; }
 .studio-nav-link { border-bottom: 1px solid var(--studio-ink); }
 .studio-nav-link span { margin-left: 22px; }
 .studio-main { max-width: 1376px; margin: auto; padding: 0 48px; }

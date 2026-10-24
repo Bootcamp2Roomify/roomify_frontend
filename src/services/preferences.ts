@@ -1,4 +1,5 @@
 import { ApiError, isValidUuid } from "./api";
+import { redirectToLogin } from "./session";
 import { Preferences, SavedPreferences, STYLES, PURPOSES } from "../features/preferences/schema";
 
 function endpoint(projectId: string): string {
@@ -7,6 +8,7 @@ function endpoint(projectId: string): string {
 }
 async function check(response: Response) {
   if (response.ok) return;
+  if (response.status === 401) redirectToLogin();
   let details: { message?: string } = {};
   try { details = await response.json(); } catch { /* Use the fallback for non-JSON errors. */ }
   throw new ApiError(details.message || "Could not save or load preferences. Please retry.", response.status, details);

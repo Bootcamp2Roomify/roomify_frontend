@@ -1,12 +1,16 @@
-/** Same-origin bridge for the project API served by Spring Boot. */
+import { backendUrl, clearedSessionCookie, readSessionToken } from "@/lib/session";
+
+/** Same-origin bridge for the project API served by Spring Boot; turns the session cookie into a Bearer token. */
 async function forwardProjectRequest(request: Request): Promise<Response> {
-  const backend = (process.env.ROOMIFY_API_URL || "http://localhost:8080").replace(/\/$/, "");
+  const backend = backendUrl();
   const url = new URL(request.url);
   const headers = new Headers();
   for (const name of ["accept", "content-type"]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
+  const token = readSessionToken(request);
+  if (token) headers.set("authorization", `Bearer ${token}`);
 
   try {
     const bytes = request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
@@ -20,6 +24,7 @@ async function forwardProjectRequest(request: Request): Promise<Response> {
     const responseHeaders = new Headers({ "cache-control": "no-store" });
     const contentType = response.headers.get("content-type");
     if (contentType) responseHeaders.set("content-type", contentType);
+    if (response.status === 401) responseHeaders.set("set-cookie", clearedSessionCookie());
     return new Response(response.status === 204 || response.status === 304 ? null : await response.arrayBuffer(), {
       status: response.status,
       headers: responseHeaders,
@@ -33,3 +38,4 @@ export const GET = forwardProjectRequest;
 export const POST = forwardProjectRequest;
 export const PATCH = forwardProjectRequest;
 export const PUT = forwardProjectRequest;
+export const DELETE = forwardProjectRequest;
