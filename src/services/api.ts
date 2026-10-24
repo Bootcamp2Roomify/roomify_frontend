@@ -7,6 +7,7 @@ import {
 } from "../types/room";
 import { loadProjectContext } from "../features/room/projectContext";
 import { validateRoomFile } from "../utils/fileValidation";
+import { redirectToLogin } from "./session";
 
 export class ApiError extends Error {
   constructor(
@@ -85,6 +86,8 @@ const getApiBaseUrl = (): string => "";
  * Reads response body once, parsing as JSON if possible, falling back to raw text.
  */
 async function parseErrorDetails(response: Response): Promise<unknown> {
+  // Every failed project call passes through here, so an expired session is handled once.
+  if (response.status === 401) redirectToLogin();
   try {
     const text = await response.text();
     if (!text) return null;

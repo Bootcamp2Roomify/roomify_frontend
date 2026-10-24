@@ -5,6 +5,7 @@ import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import { logout } from "../../services/session";
 
 gsap.registerPlugin(useGSAP);
 
@@ -46,7 +47,7 @@ export function RoomStudio({ children, step = 0 }: { children: React.ReactNode; 
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M6 26V13a10 10 0 0 1 20 0v13M6 26h8V16h12" stroke="currentColor" strokeWidth="2"/><path d="M14 26h12" stroke="currentColor" strokeWidth="2"/></svg>
           roomify<span className="studio-brand-dot">.</span>
         </Link>
-        <nav aria-label="Main navigation"><Link href="/new-room">New room</Link><Link className="studio-nav-link" href="/ui-preview">Explore preview <span aria-hidden="true">↗</span></Link></nav>
+        <nav aria-label="Main navigation"><Link href="/dashboard">My rooms</Link><Link href="/new-room">New room</Link><Link className="studio-nav-link" href="/ui-preview">Explore preview <span aria-hidden="true">↗</span></Link><button type="button" onClick={() => void logout()}>Log out</button></nav>
       </header>
       <main className="studio-main overflow-x-hidden w-full max-w-full">
         <section className="studio-intro" aria-label="Room design workspace">

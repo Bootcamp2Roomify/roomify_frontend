@@ -7,7 +7,12 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: "list",
-  use: { channel: process.env.PLAYWRIGHT_BROWSER_CHANNEL, baseURL: `http://127.0.0.1:${port}` },
+  use: {
+    channel: process.env.PLAYWRIGHT_BROWSER_CHANNEL,
+    baseURL: `http://127.0.0.1:${port}`,
+    // The fake backend does not authenticate; page middleware only checks that a session exists.
+    storageState: { cookies: [{ name: "roomify_session", value: "e2e", domain: "127.0.0.1", path: "/", expires: -1, httpOnly: true, secure: false, sameSite: "Lax" }], origins: [] },
+  },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
     { name: "mobile", use: { ...devices["Pixel 5"] } },

@@ -14,6 +14,8 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
+    // Page middleware only checks that a session exists; these specs stub the API themselves.
+    storageState: { cookies: [{ name: "roomify_session", value: "e2e", domain: "127.0.0.1", path: "/", expires: -1, httpOnly: true, secure: false, sameSite: "Lax" }], origins: [] },
   },
   projects: [
     {
