@@ -1091,4 +1091,34 @@ describe("ROOM-79 Upload Flow", () => {
       expect(uploadRoomImage).not.toHaveBeenCalled();
     });
   });
+
+  describe("MVP Feature 2: project details and resumed uploads", () => {
+    const projectId = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    const image = { projectId, imageId: "img-9", width: 1920, height: 1080 };
+
+    it("creates the project with the collected details", async () => {
+      vi.mocked(createProject).mockResolvedValueOnce({ id: projectId, status: "CREATED" });
+      vi.mocked(uploadRoomImage).mockResolvedValueOnce(image);
+      const details = { name: "Dorm", roomType: "DORM_ROOM" as const, rentalStatus: "DORMITORY" as const };
+      render(<RoomUpload details={details} />);
+      fireEvent.change(screen.getByLabelText(/select room photo file/i), { target: { files: [createRealJpegFile("dorm.jpg")] } });
+      fireEvent.click(await screen.findByTestId("submit-upload-btn"));
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/projects/${projectId}/analyze`));
+      expect(createProject).toHaveBeenCalledWith(details, expect.any(AbortSignal));
+    });
+
+    it("uploads into an existing project without creating another, even after reselecting a file", async () => {
+      vi.mocked(uploadRoomImage).mockResolvedValueOnce(image);
+      render(<RoomUpload existingProjectId={projectId} />);
+      const input = screen.getByLabelText(/select room photo file/i);
+      fireEvent.change(input, { target: { files: [createRealJpegFile("first.jpg")] } });
+      await screen.findByTestId("submit-upload-btn");
+      fireEvent.change(input, { target: { files: [createRealPngFile("second.png")] } });
+      await waitFor(() => expect((screen.getByAltText("Selected room preview") as HTMLImageElement).src).toBeTruthy());
+      fireEvent.click(await screen.findByTestId("submit-upload-btn"));
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith(`/projects/${projectId}/analyze`));
+      expect(createProject).not.toHaveBeenCalled();
+      expect(uploadRoomImage).toHaveBeenCalledWith(projectId, expect.any(File), expect.any(AbortSignal));
+    });
+  });
 });

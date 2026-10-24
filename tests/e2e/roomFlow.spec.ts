@@ -1,4 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
+import { fillProjectDetails } from "./projectDetails";
 
 const projectId = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
 const objectId = "00000000-0000-0000-0000-000000000081";
@@ -13,6 +14,8 @@ async function imageBytes(page: Page): Promise<Buffer> {
 for (const initial of ["failure", "empty"] as const) {
   test(`upload → ${initial} → retry → UUID decisions → preferences; restore after reload`, async ({ page }) => {
     let creates = 0, uploads = 0, analyses = 0, decisions = 0;
+    // Like the real backend (ROOM-101), GET /analysis returns each object's saved decision.
+    let savedDecision: string | undefined;
     await page.route("**/api/projects", route => {
       creates++;
       return route.fulfill({ status: 201, json: { id: projectId, status: "CREATED" } });
@@ -35,15 +38,17 @@ for (const initial of ["failure", "empty"] as const) {
       }
       return route.fulfill({ json: { projectId, objects: initial === "empty" && analyses === 1 ? [] : [{
         objectId, imageId: 101, label: "Chair", confidence: .83, bbox: { x: .1, y: .2, w: .3, h: .4 }, modelVersion: "fixture-v1",
+        ...(savedDecision ? { decision: savedDecision } : {}),
       }] } });
     });
     await page.route(`**/api/projects/${projectId}/objects/${objectId}`, async route => {
       decisions++;
       expect(route.request().method()).toBe("PATCH");
       expect(route.request().postDataJSON()).toEqual({ decision: "KEEP" });
+      savedDecision = "KEEP";
       await route.fulfill({ json: { objectId, decision: "KEEP" } });
     });
-    await page.goto("/new-room");
+    await page.goto("/new-room"); await fillProjectDetails(page);
     await expect(page.getByRole("heading", { name: "Upload Room Photo" })).toBeVisible();
     png = await imageBytes(page);
     await page.locator('input[type="file"]').setInputFiles({ name: "room.png", mimeType: "image/png", buffer: png });

@@ -4,6 +4,7 @@ import {
   RoomImage,
   RoomProject,
   FurnitureDecision,
+  ProjectDetails,
 } from "../types/room";
 import { loadProjectContext } from "../features/room/projectContext";
 import { validateRoomFile } from "../utils/fileValidation";
@@ -333,7 +334,7 @@ export function normalizeDetections(
  * POST /api/projects
  * Accepts UUID string only, rejecting numeric or invalid string IDs.
  */
-export async function createProject(signal?: AbortSignal): Promise<RoomProject> {
+export async function createProject(details?: ProjectDetails, signal?: AbortSignal): Promise<RoomProject> {
   const baseUrl = getApiBaseUrl();
   let response: Response;
 
@@ -342,7 +343,9 @@ export async function createProject(signal?: AbortSignal): Promise<RoomProject> 
       method: "POST",
       headers: {
         Accept: "application/json",
+        ...(details ? { "Content-Type": "application/json" } : {}),
       },
+      body: details ? JSON.stringify({ ...details, name: details.name.trim() }) : undefined,
       signal,
     });
   } catch (err: unknown) {

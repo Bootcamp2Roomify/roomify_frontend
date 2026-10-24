@@ -3,6 +3,34 @@ export interface RoomProject {
   status: string;
 }
 
+export const ROOM_TYPES = ["BEDROOM", "LIVING_ROOM", "STUDY", "DORM_ROOM", "STUDIO", "OTHER"] as const;
+export type RoomType = (typeof ROOM_TYPES)[number];
+export const RENTAL_STATUSES = ["RENTAL", "DORMITORY", "OWNED"] as const;
+export type RentalStatus = (typeof RENTAL_STATUSES)[number];
+
+/** Collected by "Create project" (MVP Feature 2). */
+export interface ProjectDetails {
+  name: string;
+  roomType: RoomType;
+  rentalStatus: RentalStatus;
+}
+
+export interface ProjectSummary extends ProjectDetails {
+  id: string;
+  status: string;
+  hasImage: boolean;
+  hasDesign: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectPage {
+  projects: ProjectSummary[];
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+}
+
 export interface RoomImage {
   projectId: string;
   imageId: string;
