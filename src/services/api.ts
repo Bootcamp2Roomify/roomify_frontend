@@ -156,9 +156,10 @@ export interface RawStoredDetectedObject {
   imageId: string | number;
   label: string;
   confidence: number;
-  bbox: RawStoredBoundingBox;
+  bbox: RawStoredBoundingBox | null;
   modelVersion?: string | null;
   decision?: FurnitureDecision;
+  source?: "CV" | "MANUAL";
 }
 
 export interface RawStoredAnalysisResponse {
@@ -1008,6 +1009,21 @@ export async function getStoredAnalysis(
       }
 
       const box = object.bbox;
+      const manual = object.source === "MANUAL";
+
+      if (manual && box === null) {
+        if (object.decision !== undefined && !FURNITURE_DECISIONS.includes(object.decision)) {
+          throw new ContractBlockedError("Invalid furniture decision in stored analysis.", "INVALID_FURNITURE_DECISION");
+        }
+        return {
+          id: object.objectId.trim(),
+          label: object.label.trim(),
+          confidence: object.confidence,
+          box: null,
+          decision: object.decision ?? "UNSURE",
+          source: "MANUAL" as const,
+        };
+      }
 
       if (
         !box ||
@@ -1051,6 +1067,7 @@ export async function getStoredAnalysis(
           height: box.h,
         },
         decision: object.decision ?? "UNSURE",
+        source: manual ? "MANUAL" as const : "CV" as const,
       };
     }
   );
@@ -1184,4 +1201,63 @@ export async function getActiveRoomImage(
     width: res.width,
     height: res.height,
   };
+}
+
+interface RawEditedObject {
+  objectId: string;
+  label: string;
+  confidence: number;
+  bbox: RawStoredBoundingBox | null;
+  decision: FurnitureDecision;
+  source: "CV" | "MANUAL";
+}
+
+function toDetection(raw: RawEditedObject): NormalizedDetection {
+  return {
+    id: raw.objectId,
+    label: raw.label,
+    confidence: raw.confidence,
+    box: raw.bbox ? { x: raw.bbox.x, y: raw.bbox.y, width: raw.bbox.w, height: raw.bbox.h } : null,
+    decision: raw.decision,
+    source: raw.source,
+  };
+}
+
+async function objectRequest(projectId: string, path: string, init: RequestInit, failure: string): Promise<Response> {
+  if (!isValidProjectId(projectId.trim())) throw new ApiError("Valid project UUID is required.", 400);
+  let response: Response;
+  try {
+    response = await fetch(`${getApiBaseUrl()}/api/projects/${encodeURIComponent(projectId.trim())}/objects${path}`, {
+      ...init,
+      headers: { Accept: "application/json", ...(init.body ? { "Content-Type": "application/json" } : {}) },
+    });
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") throw err;
+    throw new ApiError(failure, 0);
+  }
+  if (!response.ok) {
+    const details = await parseErrorDetails(response);
+    const message = details && typeof details === "object" && "message" in details ? String((details as { message: unknown }).message) : failure;
+    throw new ApiError(message, response.status, details);
+  }
+  return response;
+}
+
+/** MVP Feature 4: add an item the detector missed. */
+export async function addRoomObject(projectId: string, label: string, decision: FurnitureDecision, signal?: AbortSignal): Promise<NormalizedDetection> {
+  const response = await objectRequest(projectId, "", { method: "POST", body: JSON.stringify({ label: label.trim(), decision }), signal },
+    "Could not add the item. Please retry.");
+  return toDetection((await parseResponseBody(response)) as RawEditedObject);
+}
+
+/** MVP Feature 4: correct a detected item's name. */
+export async function relabelRoomObject(projectId: string, objectId: string, label: string, signal?: AbortSignal): Promise<NormalizedDetection> {
+  const response = await objectRequest(projectId, `/${encodeURIComponent(objectId)}/label`,
+    { method: "PUT", body: JSON.stringify({ label: label.trim() }), signal }, "Could not rename the item. Please retry.");
+  return toDetection((await parseResponseBody(response)) as RawEditedObject);
+}
+
+/** MVP Feature 4: remove an incorrect detection. */
+export async function removeRoomObject(projectId: string, objectId: string, signal?: AbortSignal): Promise<void> {
+  await objectRequest(projectId, `/${encodeURIComponent(objectId)}`, { method: "DELETE", signal }, "Could not remove the item. Please retry.");
 }

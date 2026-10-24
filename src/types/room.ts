@@ -62,8 +62,11 @@ export interface NormalizedDetection {
   id: string;
   label: string;
   confidence: number;
-  box: NormalizedBox;
+  /** null only for items the person added by hand (source MANUAL). */
+  box: NormalizedBox | null;
   decision: FurnitureDecision;
+  /** MANUAL items were added or corrected by the person; CV items came from detection. */
+  source?: "CV" | "MANUAL";
 }
 
 export interface AnalysisResult {

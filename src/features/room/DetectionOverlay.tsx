@@ -123,12 +123,15 @@ export const DetectionOverlay: React.FC<DetectionOverlayProps> = ({
       {isLoaded && (
         <div className="absolute inset-0 pointer-events-none">
           {detections.map((detection) => {
+            // Items added by hand have no box to draw.
+            const box = detection.box;
+            if (!box) return null;
             const isSelected = selectedId === detection.id;
             const isHovered = hoveredId === detection.id;
             const showBadge = isSelected || isHovered;
             const confidencePercent = `${Math.round(detection.confidence * 100)}%`;
             const displayLabel = detection.label || "Object";
-            const isNearTop = detection.box.y < 0.08;
+            const isNearTop = box.y < 0.08;
 
             return (
               <button
@@ -145,10 +148,10 @@ export const DetectionOverlay: React.FC<DetectionOverlayProps> = ({
                     : "border-2 border-white/80 bg-white/10 hover:border-amber-400 hover:bg-amber-400/20"
                 }`}
                 style={{
-                  left: `${detection.box.x * 100}%`,
-                  top: `${detection.box.y * 100}%`,
-                  width: `${detection.box.width * 100}%`,
-                  height: `${detection.box.height * 100}%`,
+                  left: `${box.x * 100}%`,
+                  top: `${box.y * 100}%`,
+                  width: `${box.width * 100}%`,
+                  height: `${box.height * 100}%`,
                 }}
                 onClick={() => onSelect(detection.id)}
                 onMouseEnter={() => onHover(detection.id)}

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { FurnitureDecision, NormalizedDetection } from "../../types/room";
 import { DetectionOverlay } from "./DetectionOverlay";
 import { DetectionList } from "./DetectionList";
-import { updateFurnitureDecision } from "../../services/api";
+import { addRoomObject, relabelRoomObject, removeRoomObject, updateFurnitureDecision } from "../../services/api";
+import { AddObjectForm } from "./AddObjectForm";
 
 export interface DetectionReviewProps {
   projectId: string;
@@ -70,6 +71,9 @@ function validateDetectionData(
       return `Detection "${d.id}" has invalid confidence ${d.confidence}. Expected 0 <= confidence <= 1.`;
     }
 
+    // Items the person added by hand legitimately have no box.
+    if (d.box === null && d.source === "MANUAL") continue;
+
     if (!d.box || typeof d.box !== "object") {
       return `Detection "${d.id}" is missing bounding box geometry.`;
     }
@@ -116,6 +120,9 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
   const [decisionError, setDecisionError] = useState<string | null>(null);
   const [savingDecisionIds, setSavingDecisionIds] = useState<Set<string>>(new Set());
   const savingDecisionIdsRef = useRef<Set<string>>(new Set());
+  const [editingIds, setEditingIds] = useState<Set<string>>(new Set());
+  const [adding, setAdding] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const reviewGenerationRef = useRef(0);
   const isSavingDecision = savingDecisionIds.size > 0;
   // Clear stale selection whenever image or detections change
@@ -125,9 +132,79 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
     setHoveredId(null);
     setReviewDetections(detections);
     setDecisionError(null);
+    setEditError(null);
+    setEditingIds(new Set());
     savingDecisionIdsRef.current.clear();
     setSavingDecisionIds(new Set());
   }, [projectId, imageUrl, detections]);
+
+  // MVP Feature 4 edits. Server results replace local state; failures leave the list unchanged.
+  const markEditing = (id: string, on: boolean) => setEditingIds(previous => {
+    const next = new Set(previous);
+    if (on) next.add(id); else next.delete(id);
+    return next;
+  });
+
+  const handleAdd = async (label: string, decision: FurnitureDecision) => {
+    setEditError(null);
+    if (previewOnly) {
+      setReviewDetections(previous => [...previous, { id: crypto.randomUUID(), label, confidence: 1, box: null, decision, source: "MANUAL" }]);
+      return;
+    }
+    const generation = reviewGenerationRef.current;
+    setAdding(true);
+    try {
+      const added = await addRoomObject(projectId, label, decision);
+      if (reviewGenerationRef.current === generation) setReviewDetections(previous => [...previous, added]);
+    } catch {
+      if (reviewGenerationRef.current === generation) setEditError(`Could not add "${label}". Please retry.`);
+    } finally {
+      if (reviewGenerationRef.current === generation) setAdding(false);
+    }
+  };
+
+  const handleRename = async (id: string, label: string) => {
+    setEditError(null);
+    if (previewOnly) {
+      setReviewDetections(previous => previous.map(d => d.id === id ? { ...d, label, confidence: 1, source: "MANUAL" } : d));
+      return;
+    }
+    const generation = reviewGenerationRef.current;
+    markEditing(id, true);
+    try {
+      const saved = await relabelRoomObject(projectId, id, label);
+      if (reviewGenerationRef.current === generation) setReviewDetections(previous => previous.map(d => d.id === id ? { ...d, ...saved } : d));
+    } catch {
+      if (reviewGenerationRef.current === generation) setEditError("Could not rename the item. Please retry.");
+    } finally {
+      if (reviewGenerationRef.current === generation) markEditing(id, false);
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    setEditError(null);
+    if (previewOnly) {
+      setReviewDetections(previous => previous.filter(d => d.id !== id));
+      return;
+    }
+    const generation = reviewGenerationRef.current;
+    markEditing(id, true);
+    try {
+      await removeRoomObject(projectId, id);
+      if (reviewGenerationRef.current === generation) {
+        setReviewDetections(previous => previous.filter(d => d.id !== id));
+        setSelectedId(previous => previous === id ? null : previous);
+      }
+    } catch {
+      if (reviewGenerationRef.current === generation) setEditError("Could not remove the item. Please retry.");
+    } finally {
+      if (reviewGenerationRef.current === generation) markEditing(id, false);
+    }
+  };
+
+  const editErrorAlert = editError && (
+    <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{editError}</div>
+  );
 
   const validationError = validateDetectionData(
     imageUrl,
@@ -181,8 +258,8 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
     );
   }
 
-  // 2. Useful success empty state when zero detections are found
-  if (detections.length === 0) {
+  // 2. Useful success empty state when there is nothing to review (detected or added)
+  if (reviewDetections.length === 0) {
     return (
       <div className="studio-detections w-full flex flex-col gap-6">
         <DetectionOverlay
@@ -201,8 +278,12 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
             No Objects Detected
           </h3>
           <p className="mt-1 text-sm text-neutral-600 max-w-md mx-auto">
-            We analyzed your room image but did not find recognizable furniture items. You can retry with a different angle or lighting, or proceed to manual room planning.
+            We analyzed your room image but did not find recognizable furniture items. You can retry with a different angle or lighting, or add the furniture yourself below.
           </p>
+          <div className="mx-auto mt-4 max-w-md text-left">
+            <AddObjectForm onAdd={handleAdd} disabled={adding} />
+          </div>
+          {editErrorAlert}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
             <button
               type="button"
@@ -331,9 +412,17 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
             onHover={handleHover}
             onDecisionChange={handleDecisionChange}
             savingDecisionIds={savingDecisionIds}
+            onRename={handleRename}
+            onRemove={handleRemove}
+            editingIds={editingIds}
           />
+          <div className="mt-3">
+            <AddObjectForm onAdd={handleAdd} disabled={adding} />
+          </div>
         </div>
       </div>
+
+      {editErrorAlert}
 
       {decisionError && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -355,7 +444,7 @@ export const DetectionReview: React.FC<DetectionReviewProps> = ({
             <button
               type="button"
               onClick={onContinue}
-              disabled={isSavingDecision}
+              disabled={isSavingDecision || editingIds.size > 0 || adding}
               className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
               {isSavingDecision ? "Saving..." : "Continue"}
