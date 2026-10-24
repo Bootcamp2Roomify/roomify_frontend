@@ -1,11 +1,17 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { ApiError } from "../../services/api";
 import { getPreferences, getPreferenceLimit, savePreferences } from "../../services/preferences";
 import { emptyDraft, label, preferenceSchema, PreferenceDraft, PreferenceErrors, SavedPreferences, STYLES, PURPOSES, toDraft } from "./schema";
 
-export default function PreferenceForm({ projectId }: { projectId: string }) {
+export default function PreferenceForm({ projectId, defaultRentalFriendly = false, continueHref }: {
+  projectId: string;
+  /** Used only when nothing is saved yet (renters and dorm residents start rental-friendly). */
+  defaultRentalFriendly?: boolean;
+  continueHref?: string;
+}) {
   const [draft, setDraft] = useState<PreferenceDraft>({ ...emptyDraft });
   const [errors, setErrors] = useState<PreferenceErrors>({});
   const [message, setMessage] = useState("");
@@ -28,11 +34,12 @@ export default function PreferenceForm({ projectId }: { projectId: string }) {
         if (controller.signal.aborted) return;
         setMaxBudget(limit);
         if (existing) setDraft(toDraft(existing));
+        else setDraft({ ...emptyDraft, rentalFriendly: defaultRentalFriendly });
       })
       .catch(() => { if (!controller.signal.aborted) setMessage("Could not load preferences. Please retry."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => { controller.abort(); saveAbort.current?.abort(); };
-  }, [projectId, attempt]);
+  }, [projectId, attempt, defaultRentalFriendly]);
 
   function change<K extends keyof PreferenceDraft>(field: K, value: PreferenceDraft[K]) {
     setDraft(current => ({ ...current, [field]: value }));
@@ -73,7 +80,10 @@ export default function PreferenceForm({ projectId }: { projectId: string }) {
       <div><dt className="font-semibold">Rental-friendly</dt><dd>{saved.rentalFriendly ? "Yes" : "No"}</dd></div>
       <div><dt className="font-semibold">Special requirements</dt><dd className="whitespace-pre-wrap break-words">{saved.specialRequirements || "None"}</dd></div>
     </dl>
-    <button className="rounded-md border px-4 py-2" onClick={() => setSaved(null)}>Edit preferences</button>
+    <div className="flex flex-wrap gap-3">
+      <button className="rounded-md border px-4 py-2" onClick={() => setSaved(null)}>Edit preferences</button>
+      {continueHref && <Link href={continueHref} className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500">Continue to my redesign →</Link>}
+    </div>
   </section>;
   return <form onSubmit={submit} noValidate className="space-y-5 rounded-lg border bg-white p-6">
     {message && <p role="alert" className="text-red-700">{message}</p>}
