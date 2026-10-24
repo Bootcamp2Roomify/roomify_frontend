@@ -17,5 +17,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
     ...devices["Desktop Chrome"],
     viewport: { width: 1440, height: 900 },
+    // LIVE_SLOWMO (ms per action) slows recordings down to a pace viewers can follow.
+    launchOptions: { slowMo: Number(process.env.LIVE_SLOWMO || 0) },
   },
 });
