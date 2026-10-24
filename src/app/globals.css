@@ -70,7 +70,7 @@
 .studio-object-panel [role="region"] > div:first-child { display: block; padding-bottom: 20px; }
 .studio-object-panel h3 { font-size: 20px; font-weight: 500; letter-spacing: -.03em; margin-bottom: 5px; }
 .studio-object-panel ul { gap: 10px; }
-.studio-object-panel button { min-height: 62px; border-color: #d5d8cb; box-shadow: none; background: #f8f8f2; color: var(--studio-ink); border-radius: 9px; }
+.studio-object-panel button[data-testid^="detection-item-"] { min-height: 62px; border-color: #d5d8cb; box-shadow: none; background: #f8f8f2; color: var(--studio-ink); border-radius: 9px; }
 .studio-object-panel button[aria-pressed="true"] { border-color: var(--studio-moss); background: #e1e6d8; --tw-ring-color: var(--studio-moss); }
 .studio-object-panel button[aria-pressed="true"] .bg-blue-600 { background: var(--studio-moss); }
 .studio-object-panel button[aria-pressed="true"] .bg-blue-100 { background: #d1dac4; color: #35422c; border-color: #b1c09e; }
@@ -136,7 +136,8 @@
  .studio-brand { font-size: 24px; gap: 8px; }
  .studio-brand svg { width: 26px; }
  .studio-nav nav { gap: 16px; font-size: 11px; }
- .studio-nav nav > a:first-child { display: none; }
+ /* Keep "My rooms" reachable on phones; the preview link is the one that can go. */
+ .studio-nav nav > a.studio-nav-link { display: none; }
  .studio-nav-link span { margin-left: 12px; }
  .studio-main { padding-inline: 20px; }
  .studio-intro { padding: 44px 0 28px; }

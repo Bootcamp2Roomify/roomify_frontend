@@ -60,3 +60,4 @@ desktop.ini
 
 # Local worktree dependency symlinks.
 /node_modules
+playwright-report-live/
