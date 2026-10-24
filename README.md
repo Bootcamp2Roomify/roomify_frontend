@@ -1,290 +1,65 @@
 # Roomify Frontend
 
-An AI-powered room redesign and DIY planning application that helps college students, renters, young adults, and budget-conscious users visualize a personalized room design based on their actual space, existing furniture, preferred style, budget, rental status, and practical requirements.
+Next.js app for **Roomify**: upload one photo of your room, review the furniture we detect, choose
+what to keep, replace or remove, set a style and budget, and get a redesign plan, a visual concept of
+your own room, shopping suggestions with cheaper alternatives and beginner DIY guides — all saved to
+your account. *Redesign more, buy less.*
 
-This repository contains the **Next.js frontend**. The REST API is maintained in the separate [roomify_backend](https://github.com/Bootcamp2Roomify/roomify_backend) repository.
+Services: [roomify_backend](https://github.com/Bootcamp2Roomify/roomify_backend) (Spring Boot API) ·
+[roomify_cv](https://github.com/Bootcamp2Roomify/roomify_cv) (furniture detection).
 
----
+## Pages
 
-## Planned MVP Features
-
-The following features define the planned Roomify MVP and should not be treated as completed until they have been implemented and tested.
-
-- 🔐 User registration and secure login
-- 🏠 Room project creation and dashboard
-- 🖼️ Room image upload
-- 👁️ Room analysis status and results
-- 🪑 Detected furniture review
-- ✅ Keep, Replace, Remove, or Unsure decisions
-- 🎨 Style, color, budget, and requirement input
-- 🤖 AI-generated room redesign
-- 🛋️ Furniture and decoration recommendations
-- 🛠️ Beginner-friendly DIY suggestions
-- 💰 Estimated project cost
-- 💾 Saved room projects
-
----
-
-## Tech Stack
-
-| Layer | Technology |
+| Route | Purpose |
 |---|---|
-| Frontend | Next.js, React, TypeScript, Tailwind CSS |
-| Backend | Java and Spring Boot REST API in a separate repository |
-| Database | PostgreSQL through the backend API |
-| Computer Vision | Python and FastAPI service through the backend |
-| AI Services | OpenAI and Gemini through the backend |
-| Image Storage | AWS S3 or compatible cloud object storage |
-| Secret Management | AWS Secrets Manager for backend secrets |
-| Deployment | Not yet decided |
+| `/` | Landing page |
+| `/register`, `/login` | Accounts |
+| `/dashboard` | Saved rooms; resume any project |
+| `/new-room` | Create project (name, room type, rental status) and upload a photo |
+| `/projects/{id}/upload` | Add a photo to an existing project |
+| `/projects/{id}/analyze` | Detection review: Keep / Replace / Remove / Unsure, rename, remove, add items |
+| `/rooms/{id}` | Style, budget, colors, purpose, Rental-Friendly Mode, requirements |
+| `/projects/{id}/design` | Redesign plan, budget, visual concept, suggestions, DIY guides |
 
-The frontend must communicate with the Spring Boot API rather than connecting directly to PostgreSQL, the computer-vision service, or private cloud credentials.
+The browser never talks to Spring directly and never sees the access token: route handlers under
+`src/app/api/` keep it in an httpOnly cookie and forward it as a Bearer token. `src/middleware.ts`
+sends signed-out visitors to `/login`.
 
----
+## Stack
 
-## Planned Project Structure
+Next.js 15.5 (App Router) · React 19 · TypeScript 5.6 · Tailwind CSS 3.4 · GSAP · Vitest + Testing
+Library · Playwright. Node **26.4.0** (`.nvmrc`); dependencies are exact versions in `package-lock.json`.
 
-```text
-src/
-├── app/                 # Next.js pages, layouts, and routes
-├── components/          # Reusable user-interface components
-├── features/            # Feature-specific frontend logic
-├── lib/                 # API client and utility functions
-├── types/               # TypeScript types and interfaces
-└── styles/              # Global styling
-
-public/                  # Static frontend assets
-.github/                 # Pull Request templates
-.env.example             # Example public environment variables
-.gitignore
-CONTRIBUTING.md
-README.md
-```
-
-The exact structure may be updated when the Next.js application is initialized under Jira task `ROOM-8`.
-
----
-
-## MVP User Workflow
-
-```text
-Landing Page
-      ↓
-Login / Register
-      ↓
-Create Room Project
-      ↓
-Upload Room Image
-      ↓
-Analyze Room
-      ↓
-Review Detected Furniture
-      ↓
-Keep / Replace / Remove / Unsure
-      ↓
-Enter Style, Budget, and Requirements
-      ↓
-Generate Redesign
-      ↓
-View Redesign Prototype
-      ↓
-Review Furniture and DIY Suggestions
-      ↓
-Save Project
-```
-
----
-
-## Git Workflow
-
-This project follows a feature-branch and Pull Request workflow.
-
-```text
-main
-│
-└── develop
-      ├── feature/*
-      ├── fix/*
-      └── docs/*
-```
-
-- `main` — stable and production-ready code
-- `develop` — integration branch for reviewed development work
-- `feature/*` — new features
-- `fix/*` — bug fixes
-- `docs/*` — documentation changes
-
-Team members should not push development work directly into `main` or `develop`.
-
----
-
-## Commit Convention
-
-Roomify uses Conventional Commits:
-
-```text
-feat: new feature
-fix: bug fix
-refactor: code restructuring without behavior changes
-docs: documentation changes
-test: adding or updating tests
-chore: project setup or maintenance
-```
-
-Examples:
-
-```text
-feat(auth): add login form
-feat(project): add room image upload page
-fix(budget): validate empty budget input
-docs: update frontend setup instructions
-test(auth): add login form tests
-chore: configure environment example
-```
-
----
-
-## Getting Started
-
-The Next.js application is implemented. The workflow below describes the current local setup.
-
-### Clone the Repository
+## Run locally
 
 ```bash
-git clone https://github.com/Bootcamp2Roomify/roomify_frontend.git
-cd roomify_frontend
-```
-
-### Configure the Environment
-
-Create the local environment file:
-
-```bash
-cp .env.example .env.local
-```
-
-The frontend environment example contains:
-
-```env
-ROOMIFY_API_URL=http://localhost:8080
-```
-
-Next.js forwards project and health requests to this server-only URL. Browser requests stay on `/api/projects/...` and `/api/health`, including preferences and room image content.
-
-Do not place database passwords, JWT secrets, OpenAI or Gemini API keys, AWS access keys, or other private credentials in the frontend environment.
-
-### Install and Run
-
-With Node.js and npm installed:
-
-```sh
 npm ci
-npm run dev
+cp .env.example .env.local     # ROOMIFY_API_URL=http://localhost:8080
+npm run dev                    # http://localhost:3000
 ```
 
-Open `/` and select **Create room** for the backend workflow. To inspect all three approved UI screens without a backend, open `/ui-preview` and switch between Upload, Analysis and Detections. Direct preview links are `/ui-preview?view=analysis` and `/ui-preview?view=review`; sample results and decisions stay local.
+Use `http://localhost:3000` rather than `127.0.0.1`: Next normalizes `127.0.0.1` to `localhost` in
+redirects, and the session cookie is per host.
 
-Check changes with `npm test`, `npm run lint`, `npm run build`, then `npm run typecheck`. Run the build and browser tests sequentially: Next development and production commands share `.next` output.
+| Variable | Purpose |
+|---|---|
+| `ROOMIFY_API_URL` | Spring backend base URL, read only by server-side route handlers (never exposed to the browser) |
 
-The default local frontend URL is:
-
-```text
-http://localhost:3000
-```
-
----
-
-## Create a Feature Branch
-
-Create new work from the latest `develop` branch:
+## Test
 
 ```bash
-git checkout develop
-git pull origin develop
-git checkout -b feature/your-feature
+npm run typecheck && npm run lint && npm test                 # unit (Vitest)
+npx playwright install chromium
+npx playwright test                                           # browser, API stubbed
+npx playwright test -c playwright.integration.config.ts       # browser, fake Spring API via the Next bridge
+npx playwright test -c playwright.live.config.ts              # full stack must be running (see below)
 ```
 
-Examples:
+The live suite drives the real Postgres + CV + backend + `next start` stack. Set `LIVE_AI=1` when the
+backend has an OpenAI key to also assert plan, concept, suggestions and DIY; `LIVE_CV_DOWN=1` with the
+CV service stopped to check the manual-entry fallback. CI runs unit tests, the build and both stubbed
+browser suites.
 
-```text
-feature/user-login
-feature/room-image-upload
-fix/budget-validation
-docs/frontend-setup
-```
+## Contributing
 
----
-
-## Open a Pull Request
-
-Create a Pull Request from the working branch into `develop`:
-
-```text
-feature/* → develop
-fix/* → develop
-docs/* → develop
-```
-
-Stable releases are merged from:
-
-```text
-develop → main
-```
-
-Pull Request titles must include the related Jira issue key:
-
-```text
-[ROOM-###] <type>: Brief description
-```
-
-Example:
-
-```text
-[ROOM-7] docs: Set up frontend repository and Git workflow
-```
-
-Each Pull Request must be reviewed by at least one teammate before it is merged.
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the complete contribution guidelines.
-
----
-
-## MVP Limitations
-
-Roomify’s frontend must clearly communicate the following limitations:
-
-- Room measurements estimated from a single photograph are not centimeter-perfect.
-- Furniture recommendations are not guaranteed to physically fit.
-- The MVP does not provide a complete interactive 3D model.
-- The MVP does not support augmented-reality furniture placement.
-- Furniture cannot be freely dragged, rotated, or resized in the generated design.
-- The MVP generates a static redesign concept.
-- Product prices and inventory may not be available in real time.
-- Users must verify measurements before purchasing or moving furniture.
-- DIY suggestions are limited to beginner-friendly, low-risk projects.
-
----
-
-## Related Repositories
-
-- [Roomify Backend](https://github.com/Bootcamp2Roomify/roomify_backend) — Java and Spring Boot REST API
-- `roomify_cv` — Python and FastAPI computer-vision service; repository will be added during project setup
-
----
-
-## License
-
-This project is licensed under the MIT License.
-
-
-## Redesign preferences (ROOM-86)
-
-The review flow's Continue action leads to `/rooms/{projectId}`, where the preference form loads saved data and the configured budget maximum from the ROOM-84 API. Save and continue performs an idempotent PUT and presents a review summary before generation. Edit preferences returns to the saved values. Generation itself belongs to the downstream generation feature.
-
-The form validates style, positive budget (up to two decimal places), supported currency/purpose, up to eight colors, and 1000-character requirements. It includes rental-friendly mode, disables inputs/Continue while saving, preserves edits on failure, and displays server validation errors inline.
-
-Requires the backend ROOM-84 change. Set `ROOMIFY_API_URL` to the Spring Boot base URL. Run `npm run typecheck`, `npm test`, `npm run lint`, and `npm run build`.
-
-The analyze page restores the active image after refresh and requests analysis before loading saved object UUIDs. If analysis is locked because preferences or design are already saved, it confirms that project status before showing stored detections. Replacing an image in an advanced project is a separate backend limitation: the current backend does not reset `PREFERENCES_READY` or `DESIGN_READY` to an image-ready status, so its design and detections can remain stale. The UI starts a fresh project for a new upload.
-
-For a local browser integration check, run `ROOMIFY_API_URL=http://127.0.0.1:41847 PORT=3381 PLAYWRIGHT_BROWSER_CHANNEL=chrome npm run test:e2e -- tests/e2e/backendBridge.spec.ts --project=chromium --workers=1 --reporter=line`. This test starts a local fixture backend and verifies the real Next.js bridge, image restoration, preferences PUT, and offline preview. It does not exercise a live Spring Boot or computer-vision service.
+[CONTRIBUTING.md](CONTRIBUTING.md) · [LICENSE](LICENSE)
