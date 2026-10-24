@@ -11,7 +11,6 @@ your account. *Redesign more, buy less.*
 > with fake providers, but have **not yet been run against the live OpenAI API**. Without a key they
 > show a clear "AI generation is not configured" message.
 
-
 Services: [roomify_backend](https://github.com/Bootcamp2Roomify/roomify_backend) (Spring Boot API) ·
 [roomify_cv](https://github.com/Bootcamp2Roomify/roomify_cv) (furniture detection).
 
