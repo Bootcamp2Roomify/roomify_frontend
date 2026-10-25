@@ -163,6 +163,20 @@ describe("Without an OpenAI key (503 AI_CONFIGURATION_ERROR)", () => {
   });
 });
 
+describe("AI account out of credit (503 AI_QUOTA_EXHAUSTED)", () => {
+  it("says the quota is exhausted instead of 'busy' and keeps the page usable", async () => {
+    routes({ [`GET ${base}`]: () => json(project), [`GET ${base}/preferences`]: () => json(preferences()),
+      [`GET ${base}/designs/latest`]: () => json(design({ status: "FAILED", plan: null, errorCode: "AI_QUOTA_EXHAUSTED" })),
+      [`GET ${base}/recommendations`]: () => json({}, 404),
+      [`POST ${base}/designs`]: () => json({ code: "AI_QUOTA_EXHAUSTED", message: "Design could not be completed. Please retry.", designId: 7 }, 503) });
+    render(<DesignWorkspace projectId={projectId} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("AI quota exhausted");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("busy");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+  });
+});
+
 describe("Preferences hand-off", () => {
   it("starts rental-friendly when asked and links to the redesign after saving", async () => {
     routes({ [`GET ${base}/preferences`]: () => empty(204), [`GET ${base}/preferences/limits`]: () => json({ maxBudgetAmount: 10000 }),
