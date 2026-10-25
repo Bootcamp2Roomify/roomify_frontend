@@ -6,6 +6,7 @@ import { DiyGuide, GeneratedAsset, RecommendationSet, StoredDesign } from "../ty
 const MESSAGES: Record<string, string> = {
   AI_PROVIDER_UNAVAILABLE: "The AI service is busy or timed out. Please try again in a moment.",
   AI_CONFIGURATION_ERROR: "AI generation is not configured on this server yet (no valid OpenAI key). Your photo, furniture and preferences are saved — try again once AI is enabled.",
+  AI_QUOTA_EXHAUSTED: "AI quota exhausted: this server's AI account has run out of credit. Your photo, furniture and preferences are saved — try again once it is topped up.",
   INVALID_DESIGN_PLAN: "The AI's plan broke one of your rules (budget, decisions or rental limits), so it was discarded. Please try again.",
   DESIGN_INPUT_CHANGED: "Your furniture or preferences changed while the plan was being made. Please try again.",
   DESIGN_GENERATION_FAILED: "The redesign could not be generated. Please try again.",
