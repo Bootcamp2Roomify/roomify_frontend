@@ -34,6 +34,9 @@ async function forwardProjectRequest(request: Request): Promise<Response> {
   }
 }
 
+// AI calls (image edits especially) can take minutes; the backend's provider timeout is 180 s. Vercel Hobby allows 300 s.
+export const maxDuration = 300;
+
 export const GET = forwardProjectRequest;
 export const POST = forwardProjectRequest;
 export const PATCH = forwardProjectRequest;

@@ -177,6 +177,38 @@ describe("AI account out of credit (503 AI_QUOTA_EXHAUSTED)", () => {
   });
 });
 
+describe("Demo-library results (source: demo)", () => {
+  it("labels the plan, concept, suggestions and DIY guide as demo output", async () => {
+    const guide = { guideId: "g1", itemId: "i1", currency: "USD", materials: ["fabric"], tools: ["scissors"], estimatedCost: 15,
+      difficulty: "Beginner", estimatedTime: "1 hour", steps: ["Cut the fabric"], safetyNotes: ["Cut away from you"], source: "demo" };
+    routes({ [`GET ${base}`]: () => json(project), [`GET ${base}/preferences`]: () => json(preferences()),
+      [`GET ${base}/designs/latest`]: () => json(design({ source: "demo" })), [`GET ${base}/recommendations`]: () => json(set({ source: "demo" })),
+      [`POST ${base}/designs/7/prototype`]: () => json({ status: "SUCCEEDED", errorCode: null, contentType: "image/jpeg", sizeBytes: 1,
+        width: 1024, height: 683, imageUrl: "x", source: "demo" }, 201),
+      [`GET ${base}/recommendations/i1/diy`]: () => json({ code: "RECOMMENDATION_NOT_FOUND" }, 404),
+      [`POST ${base}/recommendations/i1/diy`]: () => json(guide, 201) });
+    render(<DesignWorkspace projectId={projectId} />);
+    expect(await screen.findByText(/this plan comes from Roomify's pre-written demo library/)).toBeInTheDocument();
+    expect(screen.getByText(/This is a demo design concept/)).toBeInTheDocument();
+    expect(screen.getByText(/these suggestions come from Roomify's demo library/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "See it in my room" }));
+    expect(await screen.findByAltText("Example concept from the demo library")).toBeInTheDocument();
+    expect(screen.getByText("Example concept (demo)")).toBeInTheDocument();
+    expect(screen.getByText(/It is not an\s+edit of your photo/)).toBeInTheDocument();
+    const lamp = screen.getByRole("heading", { name: "Desk lamp" }).closest("li")!;
+    fireEvent.click(within(lamp).getByRole("button", { name: "DIY instead" }));
+    expect(await within(lamp).findByText(/a general beginner guide from the demo library/)).toBeInTheDocument();
+  });
+
+  it("shows no demo label for live AI results", async () => {
+    routes({ [`GET ${base}`]: () => json(project), [`GET ${base}/preferences`]: () => json(preferences()),
+      [`GET ${base}/designs/latest`]: () => json(design({ source: "ai" })), [`GET ${base}/recommendations`]: () => json(set({ source: "ai" })) });
+    render(<DesignWorkspace projectId={projectId} />);
+    expect(await screen.findByText(/This is an AI-generated design concept/)).toBeInTheDocument();
+    expect(screen.queryByRole("note")).toBeNull();
+  });
+});
+
 describe("Preferences hand-off", () => {
   it("starts rental-friendly when asked and links to the redesign after saving", async () => {
     routes({ [`GET ${base}/preferences`]: () => empty(204), [`GET ${base}/preferences/limits`]: () => json({ maxBudgetAmount: 10000 }),
