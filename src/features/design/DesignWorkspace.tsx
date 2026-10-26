@@ -132,7 +132,8 @@ export function DesignWorkspace({ projectId }: { projectId: string }) {
                 </button>
               </div>
             )}
-            {plan && <PlanView plan={plan} budget={preferences.currency === plan.currency ? preferences.budgetAmount : null} rentalFriendly={rentalFriendly} />}
+            {plan && <PlanView plan={plan} budget={preferences.currency === plan.currency ? preferences.budgetAmount : null} rentalFriendly={rentalFriendly}
+              demo={design?.source === "demo"} />}
           </div>
         </section>
       )}
@@ -144,7 +145,8 @@ export function DesignWorkspace({ projectId }: { projectId: string }) {
             {busy === "prototype" && <Working text="Rendering your redesigned room… this can take up to a minute." />}
             {errors.prototype && <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{errors.prototype}</p>}
             {prototypeReady
-              ? <PrototypeView beforeUrl={`/api/projects/${encodeURIComponent(projectId)}/image/content`} afterUrl={prototypeImageUrl(projectId, design.designId)} />
+              ? <PrototypeView beforeUrl={`/api/projects/${encodeURIComponent(projectId)}/image/content`} afterUrl={prototypeImageUrl(projectId, design.designId)}
+                demo={design.image?.source === "demo"} />
               : busy !== "prototype" && (
                 <button type="button" className={primary} disabled={busy !== null}
                   onClick={() => void run("prototype", async () => {

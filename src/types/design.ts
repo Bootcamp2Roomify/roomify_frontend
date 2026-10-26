@@ -32,6 +32,9 @@ export interface DesignPlan {
   constraints: string[];
 }
 
+/** "demo" marks results served from the backend's pre-written demo library instead of a live AI model. */
+export type ResultSource = "ai" | "demo";
+
 export interface GeneratedAsset {
   status: "UPLOADING" | "SUCCEEDED" | "FAILED";
   errorCode: string | null;
@@ -40,6 +43,8 @@ export interface GeneratedAsset {
   width: number | null;
   height: number | null;
   imageUrl: string | null;
+  /** "demo": a bundled demo-library photo (AI_DEMO_MODE or fallback), not an edit of the user's photo. */
+  source?: ResultSource;
 }
 
 export interface StoredDesign {
@@ -52,6 +57,7 @@ export interface StoredDesign {
   createdAt: string;
   completedAt: string | null;
   image: GeneratedAsset | null;
+  source?: ResultSource;
 }
 
 export interface CheaperAlternative {
@@ -82,6 +88,7 @@ export interface RecommendationSet {
   remainingBudget: number;
   items: RecommendationItem[];
   createdAt: string;
+  source?: ResultSource;
 }
 
 export interface DiyGuide {
@@ -95,4 +102,5 @@ export interface DiyGuide {
   estimatedTime: string;
   steps: string[];
   safetyNotes: string[];
+  source?: ResultSource;
 }
