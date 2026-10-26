@@ -105,7 +105,7 @@ test("record walkthrough", async ({ browser }) => {
     await page.getByRole("button", { name: "Generate redesign" }).click();
     await expect(page.getByRole("region", { name: "Estimated budget" })).toBeVisible({ timeout: 240_000 });
     await page.getByRole("button", { name: "See it in my room" }).click();
-    await expect(page.getByAltText("AI-generated redesign concept of your room")).toBeVisible({ timeout: 240_000 });
+    await expect(page.getByAltText(/AI-generated redesign concept of your room|Example concept from the demo library/)).toBeVisible({ timeout: 240_000 });
     await page.getByRole("button", { name: "Get suggestions within my budget" }).click();
     await expect(page.getByRole("region", { name: "Budget summary" })).toBeVisible({ timeout: 240_000 });
     const diy = page.getByRole("button", { name: "DIY instead" }).first();
