@@ -4,10 +4,12 @@ import React, { useState } from "react";
 import { DiyGuide, RecommendationSet } from "../../types/design";
 import { formatMoney, friendlyError, generateDiyGuide, getDiyGuide } from "../../services/design";
 import { BudgetSummary } from "./BudgetSummary";
+import { DemoNotice } from "./DemoNotice";
 
 function DiyGuidePanel({ guide, rentalFriendly }: { guide: DiyGuide; rentalFriendly: boolean }) {
   return (
     <div className="mt-3 space-y-3 rounded-lg border border-violet-200 bg-violet-50 p-4 text-sm" aria-label="DIY guide">
+      {guide.source === "demo" && <DemoNotice>Demo result: a general beginner guide from the demo library, not written for this exact item by a live AI model.</DemoNotice>}
       <p className="font-semibold text-violet-900">DIY guide · {guide.difficulty} · {guide.estimatedTime} · about {formatMoney(guide.estimatedCost, guide.currency)}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div><p className="font-medium">Materials</p><ul className="list-disc pl-5">{guide.materials.map(m => <li key={m}>{m}</li>)}</ul></div>
@@ -47,6 +49,9 @@ export function RecommendationsView({ projectId, set, currentBudget, currentCurr
 
   return (
     <div className="space-y-5">
+      {set.source === "demo" && (
+        <DemoNotice>Demo result: these suggestions come from Roomify&apos;s demo library, scaled to your budget, not from a live AI model.</DemoNotice>
+      )}
       <BudgetSummary set={set} currentBudget={currentBudget} currentCurrency={currentCurrency} />
       <ul className="grid gap-4 md:grid-cols-2" aria-label="Suggested items">
         {set.items.map(item => (

@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const ROOM_PHOTO = process.env.LIVE_ROOM_PHOTO || path.resolve(here, "../../../roomify_cv/samples/room.jpeg");
 export const AI_ENABLED = process.env.LIVE_AI === "1";
+/** LIVE_DEMO=1: the backend runs with AI_DEMO_MODE=true, so AI results must carry the demo labels. */
+export const DEMO_MODE = process.env.LIVE_DEMO === "1";
 
 export function uniqueEmail(tag: string): string {
   return `live-${tag}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@roomify.test`;

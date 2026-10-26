@@ -1,6 +1,7 @@
 import React from "react";
 import { ActionType, DesignPlan } from "../../types/design";
 import { formatMoney } from "../../services/design";
+import { DemoNotice } from "./DemoNotice";
 
 const ACTION_GROUPS: { types: ActionType[]; title: string; tone: string }[] = [
   { types: ["KEEP", "KEEP_AND_REPOSITION"], title: "Keeping (redesign more, buy less)", tone: "border-emerald-200 bg-emerald-50" },
@@ -16,10 +17,18 @@ function humanize(value: string): string {
 }
 
 /** MVP Features 6, 8 and 10: the redesign plan, rental notes and its budget allocation. */
-export function PlanView({ plan, budget, rentalFriendly }: { plan: DesignPlan; budget: number | null; rentalFriendly: boolean }) {
+export function PlanView({ plan, budget, rentalFriendly, demo = false }: {
+  plan: DesignPlan; budget: number | null; rentalFriendly: boolean; demo?: boolean;
+}) {
   const overBudget = budget !== null && plan.estimatedTotalCost > budget;
   return (
     <div className="space-y-6">
+      {demo && (
+        <DemoNotice>
+          Demo result: this plan comes from Roomify&apos;s pre-written demo library, not a live AI model. It follows your
+          furniture decisions and budget, but the wording is generic.
+        </DemoNotice>
+      )}
       <div>
         <p className="text-sm font-medium uppercase tracking-wide text-gray-500">{humanize(plan.designStyle)} concept</p>
         <p className="mt-2 text-lg text-gray-900">{plan.summary}</p>
@@ -103,7 +112,7 @@ export function PlanView({ plan, budget, rentalFriendly }: { plan: DesignPlan; b
       )}
 
       <p className="text-xs text-gray-500">
-        This is an AI-generated design concept, not a professional architectural or construction plan. It is based only on
+        This is {demo ? "a demo" : "an AI-generated"} design concept, not a professional architectural or construction plan. It is based only on
         what is visible in one photo; it cannot give exact measurements or guarantee that furniture will fit. All costs are estimates.
       </p>
     </div>

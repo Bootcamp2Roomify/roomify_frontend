@@ -1,8 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { AI_ENABLED, analyze, createProjectWithPhoto, register, uniqueEmail } from "./helpers";
+import { AI_ENABLED, analyze, createProjectWithPhoto, register, uniqueEmail, DEMO_MODE } from "./helpers";
 
 /** Full MVP journey against the real stack. AI steps assert the happy path when LIVE_AI=1. */
 test("journey: account → project → detection → review → preferences → redesign → saved project", async ({ page }) => {
+  // With AI on, the journey adds four AI steps and a budget edit on top of the 240 s default.
+  if (AI_ENABLED) test.setTimeout(600_000);
   let projectId = "";
 
   await test.step("F1 protected pages redirect to login; registration signs in", async () => {
@@ -91,14 +93,16 @@ test("journey: account → project → detection → review → preferences → 
     await expect(page.getByRole("region", { name: /Keeping/ })).toContainText(new RegExp(firstLabel.replace("my ", ""), "i"));
     await expect(page.getByRole("region", { name: "Rental-friendly notes" })).toBeVisible();
     await expect(page.getByText(/not a professional architectural or construction plan/)).toBeVisible();
+    if (DEMO_MODE) await expect(page.getByRole("note").filter({ hasText: "pre-written demo library" })).toBeVisible();
   });
 
   if (AI_ENABLED) {
     await test.step("F6 visual concept before/after", async () => {
       await page.getByRole("button", { name: "See it in my room" }).click();
-      const after = page.getByAltText("AI-generated redesign concept of your room");
+      const after = page.getByAltText(DEMO_MODE ? "Example concept from the demo library" : "AI-generated redesign concept of your room");
       await expect(after).toBeVisible({ timeout: 180_000 });
       await expect.poll(() => after.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+      if (DEMO_MODE) await expect(page.getByText("Example concept (demo)")).toBeVisible();
     });
 
     await test.step("F7/F10 suggestions within budget; F9 DIY guide", async () => {
@@ -113,12 +117,17 @@ test("journey: account → project → detection → review → preferences → 
       if (await diy.count()) {
         await diy.click();
         await expect(page.getByLabel("DIY guide").first()).toContainText("Safety", { timeout: 180_000 });
+        if (DEMO_MODE) await expect(page.getByLabel("DIY guide").first()).toContainText("demo library");
       }
+      if (DEMO_MODE) await expect(page.getByRole("note").filter({ hasText: "these suggestions come from" })).toBeVisible();
     });
 
     await test.step("F10 lowering the budget triggers the over-budget warning", async () => {
       await page.goto(`/rooms/${projectId}`);
-      await page.getByRole("button", { name: "Edit preferences" }).click().catch(() => undefined);
+      // The room page shows either the saved preferences (with "Edit preferences") or the form itself.
+      const edit = page.getByRole("button", { name: "Edit preferences" });
+      await expect(edit.or(page.getByLabel("Budget (required)"))).toBeVisible();
+      if (await edit.isVisible()) await edit.click();
       await page.getByLabel("Budget (required)").fill("5");
       await page.getByRole("button", { name: "Save and continue" }).click();
       await page.getByRole("link", { name: /Continue to my redesign/ }).click();
@@ -130,7 +139,9 @@ test("journey: account → project → detection → review → preferences → 
     await page.goto("/dashboard");
     await expect(page.getByRole("heading", { name: "Live bedroom" })).toBeVisible();
     await expect(page.getByAltText("Photo of Live bedroom")).toBeVisible();
-    await page.getByRole("link", { name: AI_ENABLED ? /Open redesign/ : /Generate redesign/ }).click();
+    // With AI on, the budget edit above sends the project back to "Preferences saved" (the plan no longer fits),
+    // so the card offers a fresh generation; the saved plan is still shown on the redesign page.
+    await page.getByRole("link", { name: /Generate redesign/ }).click();
     await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/design$`));
     if (AI_ENABLED) await expect(page.getByRole("region", { name: "Estimated budget" })).toBeVisible();
   });
