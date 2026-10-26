@@ -124,6 +124,12 @@ test("record walkthrough", async ({ browser }) => {
       await page.setViewportSize(SIZE);
       let n = 0;
       const snap = async () => {
+        // Over a real network images can still be loading; wait for every image in view to be painted.
+        await page.waitForFunction(() => [...document.images].every(img => {
+          const box = img.getBoundingClientRect();
+          const inView = box.bottom > 0 && box.top < window.innerHeight && box.height > 0;
+          return !inView || (img.complete && img.naturalWidth > 0);
+        }), undefined, { timeout: 60_000 });
         await page.waitForTimeout(600);
         await page.screenshot({ path: `${OUT}/${name}/frame-${String(n++).padStart(2, "0")}.png` });
       };
@@ -140,6 +146,8 @@ test("record walkthrough", async ({ browser }) => {
 
   await stills("07-concept", async (page, snap) => {
     await openAt(page, "prototype-title");
+    const concept = page.getByAltText(/AI-generated redesign concept of your room|Example concept from the demo library/);
+    await expect.poll(() => concept.evaluate((img: HTMLImageElement) => img.naturalWidth), { timeout: 60_000 }).toBeGreaterThan(0);
     await snap(); await snap(); // held twice as long: the before / after is the key shot
   });
 
