@@ -112,13 +112,39 @@ test("record walkthrough", async ({ browser }) => {
     if (await diy.count()) { await diy.click(); await expect(page.getByLabel("DIY guide").first()).toBeVisible({ timeout: 240_000 }); }
   });
 
-  for (const [name, target] of [["06-plan", "plan-title"], ["07-concept", "prototype-title"], ["08-suggestions", "recommendations-title"]] as const) {
-    await scene(browser, name, async page => {
-      await page.goto(`/projects/${projectId}/design`);
-      const heading = page.locator(`#${target}`);
-      await heading.waitFor();
-      await heading.scrollIntoViewIfNeeded();
-      for (let i = 0; i < 6; i++) { await page.mouse.wheel(0, 260); await page.waitForTimeout(700); }
-    });
-  }
+  const openAt = async (page: Page, target: string) => {
+    await page.goto(`/projects/${projectId}/design`);
+    const heading = page.locator(`#${target}`);
+    await heading.waitFor();
+    await heading.scrollIntoViewIfNeeded();
+    await page.evaluate(id => document.getElementById(id)?.scrollIntoView({ block: "start" }), target);
+  };
+  const scroll = async (page: Page, steps: number) => {
+    for (let i = 0; i < steps; i++) { await page.mouse.wheel(0, 220); await page.waitForTimeout(900); }
+  };
+
+  await scene(browser, "06-plan", async page => {
+    await openAt(page, "plan-title");
+    await page.waitForTimeout(4500); // the "Demo" note and summary
+    await scroll(page, 8);
+  });
+
+  await scene(browser, "07-concept", async page => {
+    await openAt(page, "prototype-title");
+    await page.waitForTimeout(7000); // before / after side by side
+  });
+
+  await scene(browser, "08-suggestions", async page => {
+    await openAt(page, "recommendations-title");
+    await page.waitForTimeout(3500);
+    await scroll(page, 2);
+    const diy = page.getByRole("button", { name: "DIY instead" }).first();
+    if (await diy.count()) {
+      await diy.click(); // the guide was generated earlier, so this loads the saved one
+      await page.getByLabel("DIY guide").first().waitFor();
+      await page.getByLabel("DIY guide").first().scrollIntoViewIfNeeded();
+      await page.waitForTimeout(3000);
+      await scroll(page, 3);
+    }
+  });
 });
