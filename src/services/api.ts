@@ -8,6 +8,7 @@ import {
 } from "../types/room";
 import { loadProjectContext } from "../features/room/projectContext";
 import { validateRoomFile } from "../utils/fileValidation";
+import { shrinkForUpload } from "../utils/shrinkImage";
 import { redirectToLogin } from "./session";
 
 export class ApiError extends Error {
@@ -425,7 +426,7 @@ export async function uploadRoomImage(
 
   const baseUrl = getApiBaseUrl();
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", await shrinkForUpload(file));
 
   let response: Response;
   try {
