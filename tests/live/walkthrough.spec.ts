@@ -112,39 +112,50 @@ test("record walkthrough", async ({ browser }) => {
     if (await diy.count()) { await diy.click(); await expect(page.getByLabel("DIY guide").first()).toBeVisible({ timeout: 240_000 }); }
   });
 
+  // The scrolling AI scenes are captured as viewport screenshots (one per position): the screen recorder
+  // composites half-painted frames while a long page scrolls. assemble.sh turns frame-NN.png into a clip.
   const openAt = async (page: Page, target: string) => {
     await page.goto(`/projects/${projectId}/design`);
-    const heading = page.locator(`#${target}`);
-    await heading.waitFor();
-    await heading.scrollIntoViewIfNeeded();
-    await page.evaluate(id => document.getElementById(id)?.scrollIntoView({ block: "start" }), target);
+    await page.locator(`#${target}`).waitFor();
+    await page.evaluate(id => document.getElementById(id)?.scrollIntoView({ block: "start", behavior: "instant" }), target);
   };
-  const scroll = async (page: Page, steps: number) => {
-    for (let i = 0; i < steps; i++) { await page.mouse.wheel(0, 220); await page.waitForTimeout(900); }
+  const stills = async (name: string, run: (page: Page, snap: () => Promise<void>) => Promise<void>) => {
+    await quiet(browser, async page => {
+      await page.setViewportSize(SIZE);
+      let n = 0;
+      const snap = async () => {
+        await page.waitForTimeout(600);
+        await page.screenshot({ path: `${OUT}/${name}/frame-${String(n++).padStart(2, "0")}.png` });
+      };
+      await run(page, snap);
+    });
   };
+  const down = (page: Page) => page.evaluate(() => window.scrollBy({ top: 520, behavior: "instant" }));
 
-  await scene(browser, "06-plan", async page => {
+  await stills("06-plan", async (page, snap) => {
     await openAt(page, "plan-title");
-    await page.waitForTimeout(4500); // the "Demo" note and summary
-    await scroll(page, 8);
+    await snap();
+    for (let i = 0; i < 4; i++) { await down(page); await snap(); }
   });
 
-  await scene(browser, "07-concept", async page => {
+  await stills("07-concept", async (page, snap) => {
     await openAt(page, "prototype-title");
-    await page.waitForTimeout(7000); // before / after side by side
+    await snap(); await snap(); // held twice as long: the before / after is the key shot
   });
 
-  await scene(browser, "08-suggestions", async page => {
+  await stills("08-suggestions", async (page, snap) => {
     await openAt(page, "recommendations-title");
-    await page.waitForTimeout(3500);
-    await scroll(page, 2);
+    await snap();
+    await down(page); await snap();
     const diy = page.getByRole("button", { name: "DIY instead" }).first();
     if (await diy.count()) {
       await diy.click(); // the guide was generated earlier, so this loads the saved one
-      await page.getByLabel("DIY guide").first().waitFor();
-      await page.getByLabel("DIY guide").first().scrollIntoViewIfNeeded();
-      await page.waitForTimeout(3000);
-      await scroll(page, 3);
+      const guide = page.getByLabel("DIY guide").first();
+      await guide.waitFor();
+      await guide.evaluate(el => el.scrollIntoView({ block: "start", behavior: "instant" }));
+      await page.evaluate(() => window.scrollBy({ top: -120, behavior: "instant" }));
+      await snap();
+      await down(page); await snap();
     }
   });
 });
